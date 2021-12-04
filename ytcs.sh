@@ -5,6 +5,15 @@
 ## if c - chronological output to rofi
 
 
+show_help () {
+        echo "s choose_subscription"
+        echo "g choose_video g "
+        echo "c choose_video c "
+        echo "r refresh_subscriptions "
+        exit
+    
+}
+
 SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
 CACHEDIR="$SCRIPTDIR"/cache
 
@@ -79,11 +88,21 @@ choose_subscription () {
     allchanneldata=""
     for file in "$CACHEDIR"/*; do  
         id=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
-        title=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' |)
-        thischanneldata="$title  |$id\\n"
-        allchanneldata="$allchanneldata\\n$thisfiledata"
-        thisfiledata=""
+        updated=$(grep -m 2 "<updated>" "$file" |tail -1 | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' )
+        title=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' )
+        if [ -n "$id" ];then
+            thischanneldata=$(printf "%s \t\t\t\t|%s|%s" "$title" "$id" "$updated")
+            allchanneldata=$(echo -e "$allchanneldata\\n$thischanneldata")
+            thischanneldata=""
+        fi
     done
+    
+    rezult=$(printf "1-By name A-Z\n2-By last updated\n3-By name Z-a" | rofi -i -dmenu -p "Sort how?" -theme DarkBlue)
+    case $rezult in 
+        1-*) allchanneldata=$(echo -e "$allchanneldata" | sort -t '|' -k 1 );;
+        2-*) allchanneldata=$(echo -e "$allchanneldata" | sort -r -t '|' -k 3 );;
+        3-*) allchanneldata=$(echo -e "$allchanneldata" | sort -r -t '|' -k 1 );;
+    esac
 
     channelloop=yes
     
@@ -153,9 +172,11 @@ else
         import_subscriptions "$InputFile"
     else
         case "${1}" in
+            s) choose_subscription;;
             g) choose_video g ;;
             c) choose_video c ;;
             r) refresh_subscriptions ;;
+            h) show_help ;;
         esac
     fi
 fi
