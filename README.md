@@ -4,7 +4,7 @@ A simple little utility to get your exported subscriptions:
 
 `./ytcs.sh ./subscriptions.csv`
 
-refresh those subscription RSS feeds:
+refresh those subscription RSS feeds (do this as a cronjob):
 
 `./ytcs.sh r`
 
