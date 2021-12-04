@@ -4,17 +4,11 @@
 ## if g - grouped output to rofi
 ## if c - chronological output to rofi
 
-if [ -z "$SCRIPTDIR" ];then 
-    # Not sourced by my code
-    export SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
-fi
 
-if [ -z "$CACHEDIR" ];then 
-    # Not sourced by my code
-    export CACHEDIR=$(echo "$SCRIPTDIR" | awk -F '/' '{sub(FS $NF,x); print $0"/cache"}')
-fi
+SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
+CACHEDIR="$SCRIPTDIR"/cache
 
-get_subscriptions() 
+import_subscriptions() 
 {
     if [ -z "$SUBSCRIPTIONFILE" ];then
         SUBSCRIPTIONFILE="$1"
@@ -26,13 +20,20 @@ get_subscriptions()
         name=$(echo "$line"|awk -F ',' '{print $3}')
         if [[ "$id" != "Channel Id" ]];then
             wget_string=$(printf "wget \"%s%s\" -O %s/%s"  "https://www.youtube.com/feeds/videos.xml?channel_id=" "$id" "$CACHEDIR" "$id") 
-            echo "${wget_string}"
-            sleep 5
             eval "${wget_string}"
         fi
     done < "$SUBSCRIPTIONFILE"
 }
 
+refresh_subscriptions() {
+
+    for file in "$CACHEDIR"/*; do  
+        if [ -f "$file" ];then
+            wget_string=$(printf "wget \"%s%s\" -O %s/%s"  "https://www.youtube.com/feeds/videos.xml?channel_id=" "$id" "$CACHEDIR" "$id") 
+            eval "${wget_string}"
+        fi
+    done
+}
 
 parse_subscriptions(){
     
@@ -43,10 +44,10 @@ parse_subscriptions(){
             if [ -f "$file" ];then
                 chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
                 chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
-                echo "-------------------------------------------------"
-                printf "%s\n" "$chantitle"
-                echo "-------------------------------------------------"
-                sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | head -5 | awk -F '|' '{print $2 " | " $3 " | " $1}'
+                echo "########################################################"
+                printf "# %s\n" "$chantitle"
+                echo "########################################################"
+                sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | head -5 | awk -F '|' '{print $2 " | " $3 " |" $1}'
             else
                 echo "ERRROROR  ERRORORR DOES NOT COMPUTE"
             fi
@@ -72,37 +73,48 @@ parse_subscriptions(){
 
 
 choose_video () {
-    if [ "$1" == "g" ];then 
-        parse_subscriptions g | rofi -i -dmenu -p "Which Reaction?" -theme DarkBlue
-    else
-        parse_subscriptions | rofi -i -dmenu -p "Which Reaction?" -theme DarkBlue
-    fi
+    loop="yes"
+    while [ "$loop" == "yes" ]; do
+        ChosenString=""
+        if [ "$1" == "g" ];then 
+            ChosenString=$(parse_subscriptions g | rofi -i -dmenu -p "Which video?" -theme DarkBlue)
+        else
+            ChosenString=$(parse_subscriptions | rofi -i -dmenu -p "Which video?" -theme DarkBlue)
+        fi  
+        if [ -n "$ChosenString" ];then
+            if [[ "$ChosenString" == "#"* ]];then
+                #Exit condition
+                loop=""
+            else
+                VideoId=$(echo "$ChosenString" | awk -F '|' '{print $3}'| sed -e 's/^[ \t]*//')
+                play_video "$VideoId"
+            fi
+        else
+            #Exit condition
+            loop=""
+        fi
+    done
 }
 
-##############################################################################
-# Are we sourced?
-# From http://stackoverflow.com/questions/2683279/ddg#34642589
-##############################################################################
+play_video () {
+    TheVideo="$1"
+    mpv_bin=$(which mpv)
+    execstring=$(printf "%s https://www.youtube.com/watch?v=%s" "$mpv_bin" "$TheVideo")
+    eval "$execstring"
+  
+}
 
-# Try to execute a `return` statement,
-# but do it in a sub-shell and catch the results.
-# If this script isn't sourced, that will raise an error.
-$(return >/dev/null 2>&1)
-
-# What exit code did that give?
-if [ "$?" -eq "0" ];then
-    echo "[info] Function ready to go."
-    OUTPUT=0
+if [ "$#" = 0 ];then
+    choose_video c
 else
-    OUTPUT=1
-    if [ "$#" = 0 ];then
-        choose_video c
+    if [ -f "${1}" ];then 
+        InputFile="${1}"
+        import_subscriptions "$InputFile"
     else
-        if [ -f "${1}" ];then 
-            InputFile="${1}"
-            get_subscriptions "$InputFile"
-        else
-            choose_video "$1"
-        fi
+        case "${1}" in
+            g) choose_video g ;;
+            c) choose_video c ;;
+            r) refresh_subscriptions ;;
+        esac
     fi
 fi
