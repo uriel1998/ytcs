@@ -23,15 +23,18 @@ import_subscriptions()
             eval "${wget_string}"
         fi
     done < "$SUBSCRIPTIONFILE"
+    exit
 }
 
 refresh_subscriptions() {
 
     for file in "$CACHEDIR"/*; do  
+        id=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
         if [ -f "$file" ];then
             wget_string=$(printf "wget \"%s%s\" -O %s/%s"  "https://www.youtube.com/feeds/videos.xml?channel_id=" "$id" "$CACHEDIR" "$id") 
             eval "${wget_string}"
         fi
+        id=""
     done
 }
 
@@ -47,7 +50,7 @@ parse_subscriptions(){
                 echo "########################################################"
                 printf "# %s\n" "$chantitle"
                 echo "########################################################"
-                sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | head -5 | awk -F '|' '{print $2 " | " $3 " |" $1}'
+                sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -5 | awk -F '|' '{print $2 " | " $3 " |" $1}'
             else
                 echo "ERRROROR  ERRORORR DOES NOT COMPUTE"
             fi
@@ -60,7 +63,7 @@ parse_subscriptions(){
                 chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
                 chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
                 
-                thisfiledata=$(sed -n '/<entry>/,$p' "$file" | grep  -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | awk -F '|' '{print $2 " | " $3 " | " $1}')
+                thisfiledata=$(sed -n '/<entry>/,$p' "$file" | grep  -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | awk -F '|' '{print $2 " | " $3 " | " $1}' | sed "s/^/$chantitle - /")
                 allfiledata="$allfiledata\\n$thisfiledata"
                 
             else
@@ -71,6 +74,44 @@ parse_subscriptions(){
     fi       
 }
 
+choose_subscription () {
+
+    allchanneldata=""
+    for file in "$CACHEDIR"/*; do  
+        id=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
+        title=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' |)
+        thischanneldata="$title  |$id\\n"
+        allchanneldata="$allchanneldata\\n$thisfiledata"
+        thisfiledata=""
+    done
+
+    channelloop=yes
+    
+    while [ "$channelloop" == "yes" ];do 
+        ChosenChannel=$(echo "$allchanneldata" | rofi -i -dmenu -p "Which Channel?" -theme DarkBlue | awk -F '|' '{ print $2 }')    
+        if [ -f "$CACHEDIR"/"$ChosenChannel" ];then
+            loop=yes
+            while [ "$loop" == "yes" ];do 
+                ChosenString=$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -5 | awk -F '|' '{print $2 " | " $3 " |" $1}' | rofi -i -dmenu -p "Which Channel?" -theme DarkBlue)
+                if [ -n "$ChosenString" ];then
+                    if [[ "$ChosenString" == "#"* ]];then
+                        #Exit condition
+                        loop=""
+                    else
+                        VideoId=$(echo "$ChosenString" | awk -F '|' '{print $3}'| sed -e 's/^[ \t]*//')
+                        play_video "$VideoId"
+                    fi
+                else
+                    #Exit condition
+                    loop=""
+                fi
+            done
+        else
+            channelloop=""
+        fi
+    done
+    
+}
 
 choose_video () {
     loop="yes"
