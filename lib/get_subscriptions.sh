@@ -1,5 +1,9 @@
 #!/bin/bash
 
+### if file is first input, will parse the subscription file (and refresh cache files)
+## if g - grouped output to rofi
+## if c - chronological output to rofi
+
 if [ -z "$SCRIPTDIR" ];then 
     # Not sourced by my code
     export SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
@@ -12,11 +16,9 @@ fi
 
 get_subscriptions() 
 {
-    
     if [ -z "$SUBSCRIPTIONFILE" ];then
         SUBSCRIPTIONFILE="$1"
     fi
- 
     
     while read line; do
         id=$(echo "$line"|awk -F ',' '{print $1}')
@@ -64,8 +66,17 @@ parse_subscriptions(){
                 echo "ERRROROR  ERRORORR DOES NOT COMPUTE"
             fi
         done
-        echo -e "$allfiledata" | sort -t '|' -k 2
+        echo -e "$allfiledata" | sort -r -t '|' -k 2
     fi       
+}
+
+
+choose_video () {
+    if [ "$1" == "g" ];then 
+        parse_subscriptions g | rofi -i -dmenu -p "Which Reaction?" -theme DarkBlue
+    else
+        parse_subscriptions | rofi -i -dmenu -p "Which Reaction?" -theme DarkBlue
+    fi
 }
 
 ##############################################################################
@@ -85,13 +96,13 @@ if [ "$?" -eq "0" ];then
 else
     OUTPUT=1
     if [ "$#" = 0 ];then
-        parse_subscriptions
+        choose_video c
     else
         if [ -f "${1}" ];then 
             InputFile="${1}"
             get_subscriptions "$InputFile"
         else
-            parse_subscriptions "$1"
+            choose_video "$1"
         fi
     fi
 fi
