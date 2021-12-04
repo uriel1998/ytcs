@@ -7,8 +7,7 @@ PSEUDOCODE
     - get list of cache files
     - parse cached rss into simple data format 
     - feed that to rofi 
-                        # Maybe don't need to do this until runtime?
-            #cat "$CACHEDIR"/"$id" | grep -e "<id>" -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' > "$CACHEDIR"/"$id".txt
+                        
     
     
     

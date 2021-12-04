@@ -27,11 +27,46 @@ get_subscriptions()
             echo "${wget_string}"
             sleep 5
             eval "${wget_string}"
-
         fi
     done < "$SUBSCRIPTIONFILE"
 }
 
+
+parse_subscriptions(){
+    
+    if [ "$1" = "g" ];then
+        # this is per subscription, latest 5 
+        for file in "$CACHEDIR"/*; do  
+            ChanSubFile=""
+            if [ -f "$file" ];then
+                chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
+                chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
+                echo "-------------------------------------------------"
+                printf "%s\n" "$chantitle"
+                echo "-------------------------------------------------"
+                sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | head -5 | awk -F '|' '{print $2 " | " $3 " | " $1}'
+            else
+                echo "ERRROROR  ERRORORR DOES NOT COMPUTE"
+            fi
+        done
+    else
+        # This is chronological, all subscriptions
+        for file in "$CACHEDIR"/*; do  
+            ChanSubFile=""
+            if [ -f "$file" ];then
+                chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
+                chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
+                
+                thisfiledata=$(sed -n '/<entry>/,$p' "$file" | grep  -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | awk -F '|' '{print $2 " | " $3 " | " $1}')
+                allfiledata="$allfiledata\\n$thisfiledata"
+                
+            else
+                echo "ERRROROR  ERRORORR DOES NOT COMPUTE"
+            fi
+        done
+        echo -e "$allfiledata" | sort -t '|' -k 2
+    fi       
+}
 
 ##############################################################################
 # Are we sourced?
@@ -50,12 +85,13 @@ if [ "$?" -eq "0" ];then
 else
     OUTPUT=1
     if [ "$#" = 0 ];then
-        echo -e "Please call this as a function or with \nthe url as the first argument and optional \ndescription as the second."
+        parse_subscriptions
     else
-
-        InputFile="${1}"
-
-        get_subscriptions "$InputFile"
+        if [ -f "${1}" ];then 
+            InputFile="${1}"
+            get_subscriptions "$InputFile"
+        else
+            parse_subscriptions "$1"
+        fi
     fi
 fi
-
