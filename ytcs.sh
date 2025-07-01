@@ -14,7 +14,7 @@
 ### if file is first input, will parse the subscription file (and refresh cache files)
 ## if g - grouped output to rofi
 ## if c - chronological output to rofi
-
+ROFI_THEME="sidebar_right"
 SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
 
 if [ -z "${XDG_DATA_HOME}" ];then
@@ -52,6 +52,7 @@ display_help(){
     echo "# --help - shows this"
     echo "# --import [/path/to/csv]: Import CSV of subscriptions"
     echo "# --refresh: refresh subscriptions"
+    echo "# --subscription: browse by subscription"
     echo "# --subscription: browse by subscription"
     echo "# --grouped: choose grouped by subscription"
     echo "# --time: choose in chronological order"
@@ -155,7 +156,7 @@ choose_subscription () {
             while [ "$loop" == "yes" ];do 
                 ChosenString=$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -5 | awk -F '|' '{print $2 " | " $3 " |" $1}' | rofi -i -dmenu -p "Which Channel?" -theme DarkBlue)
                 if [ -n "$ChosenString" ];then
-                    if [[ "$ChosenString" == "#"* ]] || [[ "$ChosenString" == "§"* ]] ;then
+                    if [[ "$ChosenString" == "#"* ]] || [[ "$ChosenString" == §* ]] || [[ "$ChosenString" == "" ]] ;then
                         #Exit condition
                         loop=""
                     else
@@ -177,11 +178,12 @@ choose_subscription () {
 choose_video () {
     loop="yes"
     while [ "$loop" == "yes" ]; do
+        loud "Choose Video Loop"
         ChosenString=""
         if [ "$1" == "g" ];then 
-            ChosenString=$(parse_subscriptions g | rofi -i -dmenu -p "Which video?" -theme DarkBlue)
+            ChosenString=$(parse_subscriptions g | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
         else
-            ChosenString=$(parse_subscriptions | rofi -i -dmenu -p "Which video?" -theme DarkBlue)
+            ChosenString=$(parse_subscriptions | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
         fi
         if [ "${ChosenString}" == "Error in reading subscriptions list!" ];then
             exit 98
@@ -189,26 +191,30 @@ choose_video () {
         if [ "${ChosenString}" == "Error in reading chronological list!" ];then
             exit 97
         fi
-        echo "*${ChosenString}*"
-        exit
+        loud "*${ChosenString}*"
+        if [[ "$ChosenString" == "§ Exit" ]];then
+            loop="no"
+            exit
+        fi
+        if [[ "$ChosenString" == "" ]];then
+            loop="no"
+            exit
+        fi        
         if [ -n "$ChosenString" ];then
-            if [[ "$ChosenString" == "#"* ]];then
-                #Exit condition
-                loop=""
-            else
                 VideoId=$(echo "$ChosenString" | awk -F '|' '{print $3}'| sed -e 's/^[ \t]*//')
-                play_video "$VideoId"
-            fi
+                echo "${VideoId}"
+                play_video "${VideoId}"
+                exit
         else
-            #Exit condition
-            loop=""
+            loop="no"
+            exit
         fi
     done
 }
 
 play_video () {
     TheVideo="${1}"
-    ("${ytube_bin}" "${TheVideo}" -o - --ignore-errors --write-description --cookies-from-browser firefox --no-check-certificate --no-playlist --mark-watched --continue | "${mpv_bin}" - -force-seekable=yes ) &
+    ("${ytube_bin}" https://www.youtube.com/watch?v="${TheVideo}" -o - --ignore-errors --write-description --cookies-from-browser firefox --no-check-certificate --no-playlist --mark-watched --continue | "${mpv_bin}" - -force-seekable=yes ) &
 }
 
 ##############################################################################
