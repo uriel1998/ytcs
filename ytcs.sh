@@ -172,11 +172,7 @@ parse_subscriptions(){
             # Filter and prepend § Exit
             {
                 echo "§ Exit"
-                echo "-----------" >> /home/steven/tmp/output.txt
-                echo "$allfiledata" >> /home/steven/tmp/output.txt
-                echo "-----------" >> /home/steven/tmp/output.txt
                 while IFS= read -r line; do
-                    echo "** $line"  >> /home/steven/tmp/output.txt
                     id="${line##*| }"  # Extract the string after the last "| "
                     command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${id}" "${CACHEDIR}/watched_files.txt")
                     count=$(eval "${command}")
@@ -184,9 +180,9 @@ parse_subscriptions(){
                         count=0
                     fi
                     if [ $count -ge 1 ]; then
-                        echo "👀 $line" 
+                        echo "👀 $line" | mark_age
                     else
-                        echo "$line" 
+                        echo "$line" | mark_age
                     fi
                 done <<< "$(echo -e "$allfiledata" | sort -r -t '|' -k 2)"
             
