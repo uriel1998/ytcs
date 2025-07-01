@@ -89,18 +89,22 @@ refresh_subscriptions() {
     done
 }
 
+
+
 parse_subscriptions(){
     
     if [ "$1" = "g" ];then
         # this is per subscription, latest 5 
-        for file in "$CACHEDIR"/*; do  
+        shopt -s nullglob  # avoids looping if no match
+        for file in "${CACHEDIR}"/*; do  
+            [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
             ChanSubFile=""
             if [ -f "$file" ];then
                 chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
                 chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
-                echo "########################################################"
-                printf "# %s\n" "$chantitle"
-                echo "########################################################"
+                echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
+                printf "§ 📺 %s\n" "$chantitle"
+                echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
                 sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -5 | awk -F '|' '{print $2 " | " $3 " |" $1}'
             else
                 echo "Error in reading subscriptions list!"
@@ -108,7 +112,9 @@ parse_subscriptions(){
         done
     else
         # This is chronological, all subscriptions
-        for file in "$CACHEDIR"/*; do  
+        shopt -s nullglob  # avoids looping if no match
+        for file in "${CACHEDIR}"/*; do  
+            [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
             ChanSubFile=""
             if [ -f "$file" ];then
                 chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
@@ -121,7 +127,27 @@ parse_subscriptions(){
                 echo "Error in reading chronological list!"
             fi
         done
-        { echo "§ Exit"; echo -e "$allfiledata" | sort -r -t '|' -k 2; }
+        if [ -f "${CACHEDIR}"/watched_files.txt ];then
+            # Read the cached IDs into an associative array
+            declare -A cached_ids
+            while read -r _ id; do
+                cached_ids["$id"]=1
+            done < "${CACHEDIR}"/watched_files.txt
+            # Filter and prepend § Exit
+            {
+                echo "§ Exit"
+                while IFS= read -r line; do
+                    id="${line##*| }"  # Extract the string after the last "| "
+                    if [[ -n "${cached_ids[$id]}" ]]; then
+                        echo "👀 $line"
+                    else
+                        echo "$line"
+                    fi
+                done <<< "$(echo -e "$allfiledata" | sort -r -t '|' -k 2)"
+            }
+        else
+            { echo "§ Exit"; echo -e "$allfiledata" | sort -r -t '|' -k 2; }
+        fi
         #echo -e "$allfiledata" | sort -r -t '|' -k 2
     fi       
 }
@@ -204,7 +230,6 @@ choose_video () {
                 VideoId=$(echo "$ChosenString" | awk -F '|' '{print $3}'| sed -e 's/^[ \t]*//')
                 echo "${VideoId}"
                 play_video "${VideoId}"
-                exit
         else
             loop="no"
             exit
@@ -214,7 +239,8 @@ choose_video () {
 
 play_video () {
     TheVideo="${1}"
-    ("${ytube_bin}" https://www.youtube.com/watch?v="${TheVideo}" -o - --ignore-errors --write-description --cookies-from-browser firefox --no-check-certificate --no-playlist --mark-watched --continue | "${mpv_bin}" - -force-seekable=yes ) &
+    echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
+    ("${ytube_bin}" https://www.youtube.com/watch?v="${TheVideo}" -o - --ignore-errors --cookies-from-browser firefox --no-check-certificate --no-playlist --mark-watched --continue | "${mpv_bin}" - -force-seekable=yes & ) &
 }
 
 ##############################################################################

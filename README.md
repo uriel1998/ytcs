@@ -24,3 +24,5 @@ or browse through subscriptions:
 
 Requires mpv working with yt-dlp or youtube-dl, awk, sed, grep.
  
+ 
+ todo -- track watched, perhaps by using yt-dlp's bank? probably best there
