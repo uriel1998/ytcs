@@ -27,6 +27,7 @@ if [ ! -d "${CACHEDIR}" ];then
     mkdir -p "${CACHEDIR}"
 fi
 LOUD=1
+MAX_CHANNEL_AGE=182
 wget_bin=$(which wget)
 mpv_bin=$(which mpv)
 grep_bin=$(which grep)
@@ -90,10 +91,54 @@ refresh_subscriptions() {
     done
 }
 
+most_recent_age() {
+    local data="$1"
+    local latest_ts=0
+
+    # Loop over each line
+    while IFS= read -r line; do
+        # Extract ISO date from second field
+        date_string=$(echo "$line" | awk -F '|' '{print $2}' | xargs)
+        [[ -z "$date_string" ]] && continue
+
+        # Convert to epoch
+        ts=$(date -d "$date_string" +%s 2>/dev/null)
+        [[ -z "$ts" ]] && continue
+
+        # Keep the latest (most recent) timestamp
+        if (( ts > latest_ts )); then
+            latest_ts=$ts
+        fi
+    done <<< "$data"
+
+    # If no valid timestamp found
+    if (( latest_ts == 0 )); then
+        echo "N/A,N/A"
+        return 1
+    fi
+
+    # Calculate age in days and weeks
+    now_ts=$(date +%s)
+    seconds_old=$(( now_ts - latest_ts ))
+    days_old=$(( seconds_old / 86400 ))
+    echo "${days_old}"
+}
+
 mark_age() {
-    local two_weeks_ago four_weeks_ago line date_string line_ts
+    local one_week_ago two_weeks_ago three_weeks_ago four_weeks_ago five_weeks_ago \
+      six_weeks_ago seven_weeks_ago eight_weeks_ago nine_weeks_ago ten_weeks_ago \
+      line date_string line_ts
+
+    one_week_ago=$(date -d '7 days ago' +%s)
     two_weeks_ago=$(date -d '14 days ago' +%s)
+    three_weeks_ago=$(date -d '21 days ago' +%s)
     four_weeks_ago=$(date -d '28 days ago' +%s)
+    five_weeks_ago=$(date -d '35 days ago' +%s)
+    six_weeks_ago=$(date -d '42 days ago' +%s)
+    seven_weeks_ago=$(date -d '49 days ago' +%s)
+    eight_weeks_ago=$(date -d '56 days ago' +%s)
+    nine_weeks_ago=$(date -d '63 days ago' +%s)
+    ten_weeks_ago=$(date -d '70 days ago' +%s)
 
     while IFS= read -r line; do
         # Extract the ISO date from field 2 (trimmed)
@@ -105,14 +150,31 @@ mark_age() {
             continue
         fi
 
-        if (( line_ts < four_weeks_ago )); then
-            echo "⌛ $line"
+        if   (( line_ts < ten_weeks_ago )); then
+            echo "🕙 $line"
+        elif (( line_ts < nine_weeks_ago )); then
+            echo "🕘 $line"
+        elif (( line_ts < eight_weeks_ago )); then
+            echo "🕗 $line"
+        elif (( line_ts < seven_weeks_ago )); then
+            echo "🕖 $line"
+        elif (( line_ts < six_weeks_ago )); then
+            echo "🕕 $line"
+        elif (( line_ts < five_weeks_ago )); then
+            echo "🕔 $line"
+        elif (( line_ts < four_weeks_ago )); then
+            echo "🕓 $line"
+        elif (( line_ts < three_weeks_ago )); then
+            echo "🕒 $line"
         elif (( line_ts < two_weeks_ago )); then
-            echo "⏳ $line"
+            echo "🕑 $line"
+        elif (( line_ts < one_week_ago )); then
+            echo "🕐 $line"
         else
             echo "$line"
         fi
-    done
+
+    done  
 }
 
 parse_subscriptions(){
@@ -126,9 +188,12 @@ parse_subscriptions(){
             if [ -f "$file" ];then
                 chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
                 chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
-                thischanneltitle=$(printf "§ 📺 %s" "$chantitle")
                 thischanneldata=$(sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -5 | awk -F '|' '{print $2 " | " $3 " |" $1}')
-                allfiledata="$allfiledata\\n$thischanneltitle\\n$thischanneldata"
+                thischannelage=$(most_recent_age "$thischanneldata")
+                thischanneltitle=$(printf "§ 📺 %s - %s" "$chantitle" "$thischannelage")
+                if [ $thischannelage -le $MAX_CHANNEL_AGE ];then
+                    allfiledata="$allfiledata\\n$thischanneltitle\\n$thischanneldata"
+                fi
             else
                 echo "Error in reading subscriptions list!"
             fi
@@ -138,6 +203,7 @@ parse_subscriptions(){
             {
                 echo "§ Exit"
                 while IFS= read -r line; do
+                    [[ "${line}" == "" ]] && continue
                     id="${line##*| }"  # Extract the string after the last "| "
                     command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${id}" "${CACHEDIR}/watched_files.txt")
                     count=$(eval "${command}")
