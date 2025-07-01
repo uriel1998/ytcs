@@ -28,6 +28,7 @@ if [ ! -d "${CACHEDIR}" ];then
 fi
 LOUD=1
 MAX_CHANNEL_AGE=182
+MAX_GROUPED_VIDS=10
 wget_bin=$(which wget)
 mpv_bin=$(which mpv)
 grep_bin=$(which grep)
@@ -188,7 +189,7 @@ parse_subscriptions(){
             if [ -f "$file" ];then
                 chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
                 chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
-                thischanneldata=$(sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -5 | awk -F '|' '{print $2 " | " $3 " |" $1}')
+                thischanneldata=$(sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -${MAX_GROUPED_VIDS} | awk -F '|' '{print $2 " | " $3 " |" $1}')
                 thischannelage=$(most_recent_age "$thischanneldata")
                 thischanneltitle=$(printf "§ 📺 %s - %s" "$chantitle" "$thischannelage")
                 if [ $thischannelage -le $MAX_CHANNEL_AGE ];then
