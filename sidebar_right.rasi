@@ -26,7 +26,8 @@ configuration {
 * {
     foreground:  #ffeedd;
     backlight:   #ccffeedd;
-    background-color:  rgba(0,0,0,0);
+    background-color:  transparent;
+    transparency: "screenshot";        
     dark: #1c1c1c;
     // Black
     black:       #3d352a;
@@ -75,7 +76,8 @@ configuration {
     border:  0px;
     border-radius: 10px;
     color: @foreground;
-    background-color: black;
+    background-color: @transparent;
+
     spacing: 0;
     children:  [mainbox];
     orientation: horizontal;
@@ -84,6 +86,8 @@ configuration {
 #mainbox {
     spacing: 0;
     children: [ inputbar, message, listview ];
+    background-color: #080808;
+    color: @foreground;
 }
 
 #message {
@@ -122,6 +126,7 @@ configuration {
     background-color: #1c1c1ccc;
     dynamic: false;
     lines: 10;
+    color: @foreground;
 }
 #element {
     padding: 3px;
@@ -130,6 +135,9 @@ configuration {
     border-radius: 4px;
     color: @foreground;
     font:inherit;
+}
+#element normal normal {
+    foreground: @foreground;
 }
 #element selected.normal {
     background-color: @blue;

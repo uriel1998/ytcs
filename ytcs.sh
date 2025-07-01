@@ -26,9 +26,10 @@ CACHEDIR="${XDG_DATA_HOME}/youtube-cli-subcriptions"
 if [ ! -d "${CACHEDIR}" ];then
     mkdir -p "${CACHEDIR}"
 fi
-LOUD=0
+LOUD=1
 wget_bin=$(which wget)
 mpv_bin=$(which mpv)
+grep_bin=$(which grep)
 ytube_bin=$(which youtube-dl)
 dlp=$(which yt-dlp)
 if [ "$dlp" != "" ];then
@@ -71,7 +72,7 @@ import_subscriptions()
         url=$(echo "$line"|awk -F ',' '{print $2}')
         name=$(echo "$line"|awk -F ',' '{print $3}')
         if [[ "$id" != "Channel Id" ]];then
-            wget_string=$(printf "wget \"%s%s\" -O %s/%s"  "https://www.youtube.com/feeds/videos.xml?channel_id=" "${id}" "${CACHEDIR}" "${id}") 
+            wget_string=$(printf "%s \"%s%s\" -O %s/%s" "${wget_bin}" "https://www.youtube.com/feeds/videos.xml?channel_id=" "${id}" "${CACHEDIR}" "${id}") 
             eval "${wget_string}"
         fi
     done < "$SUBSCRIPTIONFILE"
@@ -82,17 +83,40 @@ refresh_subscriptions() {
     for file in "$CACHEDIR"/*; do  
         id=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
         if [ -f "$file" ];then
-            wget_string=$(printf "wget \"%s%s\" -O %s/%s"  "https://www.youtube.com/feeds/videos.xml?channel_id=" "$id" "$CACHEDIR" "$id") 
+            wget_string=$(printf "%s \"%s%s\" -O %s/%s" "${wget_bin}" "https://www.youtube.com/feeds/videos.xml?channel_id=" "$id" "$CACHEDIR" "$id") 
             eval "${wget_string}"
         fi
         id=""
     done
 }
 
+mark_age() {
+    local two_weeks_ago four_weeks_ago line date_string line_ts
+    two_weeks_ago=$(date -d '14 days ago' +%s)
+    four_weeks_ago=$(date -d '28 days ago' +%s)
 
+    while IFS= read -r line; do
+        # Extract the ISO date from field 2 (trimmed)
+        date_string=$(echo "$line" | awk -F '|' '{print $2}' | xargs)
+        line_ts=$(date -d "$date_string" +%s 2>/dev/null)
+
+        if [[ -z "$line_ts" ]]; then
+            echo "$line"
+            continue
+        fi
+
+        if (( line_ts < four_weeks_ago )); then
+            echo "⌛ $line"
+        elif (( line_ts < two_weeks_ago )); then
+            echo "⏳ $line"
+        else
+            echo "$line"
+        fi
+    done
+}
 
 parse_subscriptions(){
-    
+    trap '' PIPE
     if [ "$1" = "g" ];then
         # this is per subscription, latest 5 
         shopt -s nullglob  # avoids looping if no match
@@ -102,48 +126,70 @@ parse_subscriptions(){
             if [ -f "$file" ];then
                 chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
                 chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
-                echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
-                printf "§ 📺 %s\n" "$chantitle"
-                echo "⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯"
-                sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -5 | awk -F '|' '{print $2 " | " $3 " |" $1}'
+                thischanneltitle=$(printf "§ 📺 %s" "$chantitle")
+                thischanneldata=$(sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -5 | awk -F '|' '{print $2 " | " $3 " |" $1}')
+                allfiledata="$allfiledata\\n$thischanneltitle\\n$thischanneldata"
             else
                 echo "Error in reading subscriptions list!"
             fi
         done
-    else
-        # This is chronological, all subscriptions
-        shopt -s nullglob  # avoids looping if no match
-        for file in "${CACHEDIR}"/*; do  
-            [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
-            ChanSubFile=""
-            if [ -f "$file" ];then
-                chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
-                chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
-                
-                thisfiledata=$(sed -n '/<entry>/,$p' "$file" | grep  -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | awk -F '|' '{print $2 " | " $3 " | " $1}' | sed "s/^/$chantitle - /")
-                allfiledata="$allfiledata\\n$thisfiledata"
-                
-            else
-                echo "Error in reading chronological list!"
-            fi
-        done
         if [ -f "${CACHEDIR}"/watched_files.txt ];then
-            # Read the cached IDs into an associative array
-            declare -A cached_ids
-            while read -r _ id; do
-                cached_ids["$id"]=1
-            done < "${CACHEDIR}"/watched_files.txt
             # Filter and prepend § Exit
             {
                 echo "§ Exit"
                 while IFS= read -r line; do
                     id="${line##*| }"  # Extract the string after the last "| "
-                    if [[ -n "${cached_ids[$id]}" ]]; then
-                        echo "👀 $line"
+                    command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${id}" "${CACHEDIR}/watched_files.txt")
+                    count=$(eval "${command}")
+                    if [ "$count" == "" ];then
+                        count=0
+                    fi
+                    if [ $count -ge 1 ]; then
+                        echo "👀 $line" | mark_age
                     else
-                        echo "$line"
+                        echo "$line" | mark_age
+                    fi
+                done <<< "$(echo -e "$allfiledata")"
+            }
+        else
+            { echo "§ Exit"; echo -e "$allfiledata"; }
+        fi        
+    else
+        # This is chronological, all subscriptions
+        shopt -s nullglob  # avoids looping if no match
+        for file in "${CACHEDIR}"/*; do  
+            [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
+            if [ -f "$file" ];then
+                chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
+                chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
+                thisfiledata=$(sed -n '/<entry>/,$p' "$file" | grep  -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | awk -F '|' '{print $2 " | " $3 " | " $1}' | sed "s/^/\[$chantitle\] /")
+                allfiledata="$allfiledata\\n$thisfiledata"
+            else
+                echo "Error in reading chronological list!"
+            fi
+        done
+        if [ -f "${CACHEDIR}"/watched_files.txt ];then
+            # Filter and prepend § Exit
+            {
+                echo "§ Exit"
+                echo "-----------" >> /home/steven/tmp/output.txt
+                echo "$allfiledata" >> /home/steven/tmp/output.txt
+                echo "-----------" >> /home/steven/tmp/output.txt
+                while IFS= read -r line; do
+                    echo "** $line"  >> /home/steven/tmp/output.txt
+                    id="${line##*| }"  # Extract the string after the last "| "
+                    command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${id}" "${CACHEDIR}/watched_files.txt")
+                    count=$(eval "${command}")
+                    if [ "$count" == "" ];then
+                        count=0
+                    fi
+                    if [ $count -ge 1 ]; then
+                        echo "👀 $line" 
+                    else
+                        echo "$line" 
                     fi
                 done <<< "$(echo -e "$allfiledata" | sort -r -t '|' -k 2)"
+            
             }
         else
             { echo "§ Exit"; echo -e "$allfiledata" | sort -r -t '|' -k 2; }
@@ -207,9 +253,9 @@ choose_video () {
         loud "Choose Video Loop"
         ChosenString=""
         if [ "$1" == "g" ];then 
-            ChosenString=$(parse_subscriptions g | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
+            ChosenString=$(parse_subscriptions g 2>/dev/null | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
         else
-            ChosenString=$(parse_subscriptions | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
+            ChosenString=$(parse_subscriptions 2>/dev/null | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
         fi
         if [ "${ChosenString}" == "Error in reading subscriptions list!" ];then
             exit 98
@@ -217,8 +263,8 @@ choose_video () {
         if [ "${ChosenString}" == "Error in reading chronological list!" ];then
             exit 97
         fi
-        loud "*${ChosenString}*"
-        if [[ "$ChosenString" == "§ Exit" ]];then
+        loud "*${ChosenString}*"  
+        if [[ $ChosenString =~ ^§ ]];then
             loop="no"
             exit
         fi
@@ -240,7 +286,7 @@ choose_video () {
 play_video () {
     TheVideo="${1}"
     echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
-    ("${ytube_bin}" https://www.youtube.com/watch?v="${TheVideo}" -o - --ignore-errors --cookies-from-browser firefox --no-check-certificate --no-playlist --mark-watched --continue | "${mpv_bin}" - -force-seekable=yes & ) &
+    "${ytube_bin}" https://www.youtube.com/watch?v="${TheVideo}" -o - --ignore-errors --cookies-from-browser firefox --no-check-certificate --no-playlist --mark-watched --continue | "${mpv_bin}" - -force-seekable=yes 5
 }
 
 ##############################################################################
@@ -271,10 +317,19 @@ while [ $# -gt 0 ]; do
                     fi
                     shift
                     ;;
-        --grouped|-g) choose_video g ;;
-        --time|--chronological|-t|-c) choose_video c ;;
-        --subscription|-s) choose_subscription ;;
-        *)      display_help
+        --grouped|-g) 
+            choose_video g 
+            exit
+            ;;
+        --time|--chronological|-t|-c) 
+            choose_video c 
+            exit
+            ;;
+        --subscription|-s) 
+            choose_subscription 
+            exit
+            ;;
+        *)  display_help
             exit
             ;;
     esac
