@@ -1,21 +1,63 @@
 #!/bin/bash
 
+
+##############################################################################
+#
+#  youtube-cli-subscriptions -- to scroll through and view youtube videos 
+#  through RSS feeds and yt-dlp and mpv
+#  
+#  (c) Steven Saus 2025
+#  Licensed under the MIT license
+#
+##############################################################################
+
 ### if file is first input, will parse the subscription file (and refresh cache files)
 ## if g - grouped output to rofi
 ## if c - chronological output to rofi
 
+SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
 
-show_help () {
-        echo "s choose_subscription"
-        echo "g choose_video g "
-        echo "c choose_video c "
-        echo "r refresh_subscriptions "
-        exit
-    
+if [ -z "${XDG_DATA_HOME}" ];then
+    export XDG_DATA_HOME="${HOME}/.local/share"
+    export XDG_CONFIG_HOME="${HOME}/.config"
+fi
+
+CACHEDIR="${XDG_DATA_HOME}/youtube-cli-subcriptions"
+if [ ! -d "${CACHEDIR}" ];then
+    mkdir -p "${CACHEDIR}"
+fi
+LOUD=0
+wget_bin=$(which wget)
+mpv_bin=$(which mpv)
+ytube_bin=$(which youtube-dl)
+dlp=$(which yt-dlp)
+if [ "$dlp" != "" ];then
+    ytube_bin="${dlp}"
+fi
+
+function loud() {
+##############################################################################
+# loud outputs on stderr 
+##############################################################################    
+    if [ $LOUD -eq 1 ];then
+        echo "$@" 1>&2
+    fi
 }
 
-SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
-CACHEDIR="$SCRIPTDIR"/cache
+display_help(){
+##############################################################################
+# Show the Help
+##############################################################################    
+    echo "###################################################################"
+    echo "# --help - shows this"
+    echo "# --import [/path/to/csv]: Import CSV of subscriptions"
+    echo "# --refresh: refresh subscriptions"
+    echo "# --subscription: browse by subscription"
+    echo "# --grouped: choose grouped by subscription"
+    echo "# --time: choose in chronological order"
+    echo "###################################################################"
+    exit
+}
 
 import_subscriptions() 
 {
@@ -28,7 +70,7 @@ import_subscriptions()
         url=$(echo "$line"|awk -F ',' '{print $2}')
         name=$(echo "$line"|awk -F ',' '{print $3}')
         if [[ "$id" != "Channel Id" ]];then
-            wget_string=$(printf "wget \"%s%s\" -O %s/%s"  "https://www.youtube.com/feeds/videos.xml?channel_id=" "$id" "$CACHEDIR" "$id") 
+            wget_string=$(printf "wget \"%s%s\" -O %s/%s"  "https://www.youtube.com/feeds/videos.xml?channel_id=" "${id}" "${CACHEDIR}" "${id}") 
             eval "${wget_string}"
         fi
     done < "$SUBSCRIPTIONFILE"
@@ -36,7 +78,6 @@ import_subscriptions()
 }
 
 refresh_subscriptions() {
-
     for file in "$CACHEDIR"/*; do  
         id=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
         if [ -f "$file" ];then
@@ -61,7 +102,7 @@ parse_subscriptions(){
                 echo "########################################################"
                 sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -5 | awk -F '|' '{print $2 " | " $3 " |" $1}'
             else
-                echo "ERRROROR  ERRORORR DOES NOT COMPUTE"
+                echo "Error in reading subscriptions list!"
             fi
         done
     else
@@ -76,10 +117,11 @@ parse_subscriptions(){
                 allfiledata="$allfiledata\\n$thisfiledata"
                 
             else
-                echo "ERRROROR  ERRORORR DOES NOT COMPUTE"
+                echo "Error in reading chronological list!"
             fi
         done
-        echo -e "$allfiledata" | sort -r -t '|' -k 2
+        { echo "§ Exit"; echo -e "$allfiledata" | sort -r -t '|' -k 2; }
+        #echo -e "$allfiledata" | sort -r -t '|' -k 2
     fi       
 }
 
@@ -113,7 +155,7 @@ choose_subscription () {
             while [ "$loop" == "yes" ];do 
                 ChosenString=$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -5 | awk -F '|' '{print $2 " | " $3 " |" $1}' | rofi -i -dmenu -p "Which Channel?" -theme DarkBlue)
                 if [ -n "$ChosenString" ];then
-                    if [[ "$ChosenString" == "#"* ]];then
+                    if [[ "$ChosenString" == "#"* ]] || [[ "$ChosenString" == "§"* ]] ;then
                         #Exit condition
                         loop=""
                     else
@@ -140,7 +182,15 @@ choose_video () {
             ChosenString=$(parse_subscriptions g | rofi -i -dmenu -p "Which video?" -theme DarkBlue)
         else
             ChosenString=$(parse_subscriptions | rofi -i -dmenu -p "Which video?" -theme DarkBlue)
-        fi  
+        fi
+        if [ "${ChosenString}" == "Error in reading subscriptions list!" ];then
+            exit 98
+        fi
+        if [ "${ChosenString}" == "Error in reading chronological list!" ];then
+            exit 97
+        fi
+        echo "*${ChosenString}*"
+        exit
         if [ -n "$ChosenString" ];then
             if [[ "$ChosenString" == "#"* ]];then
                 #Exit condition
@@ -157,26 +207,47 @@ choose_video () {
 }
 
 play_video () {
-    TheVideo="$1"
-    mpv_bin=$(which mpv)
-    execstring=$(printf "%s https://www.youtube.com/watch?v=%s" "$mpv_bin" "$TheVideo")
-    eval "$execstring"
-  
+    TheVideo="${1}"
+    ("${ytube_bin}" "${TheVideo}" -o - --ignore-errors --write-description --cookies-from-browser firefox --no-check-certificate --no-playlist --mark-watched --continue | "${mpv_bin}" - -force-seekable=yes ) &
 }
 
-if [ "$#" = 0 ];then
-    choose_video c
-else
-    if [ -f "${1}" ];then 
-        InputFile="${1}"
-        import_subscriptions "$InputFile"
-    else
-        case "${1}" in
-            s) choose_subscription;;
-            g) choose_video g ;;
-            c) choose_video c ;;
-            r) refresh_subscriptions ;;
-            h) show_help ;;
-        esac
-    fi
-fi
+##############################################################################
+# Main loop
+##############################################################################
+
+while [ $# -gt 0 ]; do
+##############################################################################
+# Get command-line parameters
+##############################################################################
+
+# You have to have the shift or else it will keep looping...
+    option="$1"
+    case $option in
+        --loud)     export LOUD=1
+                    shift
+                    ;;
+        --help|-h)     display_help
+                    exit
+                    ;;
+        --import|-i)   shift
+                    if [ -f "${1}" ];then 
+                        InputFile="${1}"
+                        import_subscriptions "$InputFile"
+                    else
+                        loud "Import must have a csv inputfile following."
+                        exit 96
+                    fi
+                    shift
+                    ;;
+        --grouped|-g) choose_video g ;;
+        --time|--chronological|-t|-c) choose_video c ;;
+        --subscription|-s) choose_subscription ;;
+        *)      display_help
+            exit
+            ;;
+    esac
+done   
+
+
+
+

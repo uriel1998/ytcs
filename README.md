@@ -2,22 +2,25 @@
 
 A simple little utility to get your exported subscriptions:
 
-`./ytcs.sh ./subscriptions.csv`
+Import subscriptions from CSV such as exported from YouTube or FreeTube
 
-refresh those subscription RSS feeds (do this as a cronjob)4:
+`./ytcs.sh --import [/path/to/csv]`
 
-`./ytcs.sh r`
+refresh those subscription RSS feeds (do this as a cronjob):
+
+`./ytcs.sh --refresh`
 
 present them in a rofi menu in chronological order:
 
-`./ytcs.sh c`
+`./ytcs.sh --t`
 
 grouped by subscription:
 
-`./ytcs.sh g`
+`./ytcs.sh --g`
 
 or browse through subscriptions:
 
-`./ytcs.sh s`
+`./ytcs.sh --subscription`
 
 Requires mpv working with yt-dlp or youtube-dl, awk, sed, grep.
+ 
