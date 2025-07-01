@@ -125,6 +125,11 @@ most_recent_age() {
     echo "${days_old}"
 }
 
+days_to_iso8601() {
+    local days_ago="$1"
+    date -u -d "$days_ago days ago" +"%Y-%m-%dT%H:%M:%S+00:00"
+}
+
 mark_age() {
     local one_week_ago two_weeks_ago three_weeks_ago four_weeks_ago five_weeks_ago \
       six_weeks_ago seven_weeks_ago eight_weeks_ago nine_weeks_ago ten_weeks_ago \
@@ -143,36 +148,35 @@ mark_age() {
 
     while IFS= read -r line; do
         # Extract the ISO date from field 2 (trimmed)
-        date_string=$(echo "$line" | awk -F '|' '{print $2}' | xargs)
-        line_ts=$(date -d "$date_string" +%s 2>/dev/null)
-
+        if [[ $line == *📺* ]];then
+            days_ago=$(echo "$line" | awk -F '-' '{print $2}' | xargs)
+            date_string=$(days_to_iso8601 $days_ago)
+            line_ts=$(date -d "$date_string" +%s 2>/dev/null)
+        else
+            date_string=$(echo "$line" | awk -F '|' '{print $2}' | xargs)
+            line_ts=$(date -d "$date_string" +%s 2>/dev/null)
+        fi
         if [[ -z "$line_ts" ]]; then
             echo "$line"
             continue
         fi
 
-        if   (( line_ts < ten_weeks_ago )); then
-            echo "🕙 $line"
-        elif (( line_ts < nine_weeks_ago )); then
-            echo "🕘 $line"
-        elif (( line_ts < eight_weeks_ago )); then
-            echo "🕗 $line"
-        elif (( line_ts < seven_weeks_ago )); then
-            echo "🕖 $line"
+        if (( line_ts < seven_weeks_ago )); then
+            echo "▁ $line"
         elif (( line_ts < six_weeks_ago )); then
-            echo "🕕 $line"
+            echo "▂ $line"
         elif (( line_ts < five_weeks_ago )); then
-            echo "🕔 $line"
+            echo "▃ $line"
         elif (( line_ts < four_weeks_ago )); then
-            echo "🕓 $line"
+            echo "▄ $line"
         elif (( line_ts < three_weeks_ago )); then
-            echo "🕒 $line"
+            echo "▅ $line"
         elif (( line_ts < two_weeks_ago )); then
-            echo "🕑 $line"
+            echo "▆ $line"
         elif (( line_ts < one_week_ago )); then
-            echo "🕐 $line"
+            echo "▇ $line"
         else
-            echo "$line"
+            echo "█ $line"
         fi
 
     done  
@@ -182,30 +186,39 @@ parse_subscriptions(){
     trap '' PIPE
     if [ "$1" = "g" ];then
         # this is per subscription, latest 5 
+        TEMPFILE=$(mktemp)
         shopt -s nullglob  # avoids looping if no match
+        watchcount=0
         for file in "${CACHEDIR}"/*; do  
             [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
-            ChanSubFile=""
+            if [ $watchcount -gt 12 ];then
+                wait
+                watchcount=0
+            fi
+            watchcount=$(( watchcount + 1 ))  
+            (
             if [ -f "$file" ];then
                 chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
                 chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
                 thischanneldata=$(sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -${MAX_GROUPED_VIDS} | awk -F '|' '{print $2 " | " $3 " |" $1}')
                 thischannelage=$(most_recent_age "$thischanneldata")
-                thischanneltitle=$(printf "§ 📺 %s - %s" "$chantitle" "$thischannelage")
+                thischanneltitle=$(printf "§ 📺 %s -%s" "$chantitle" "$thischannelage")
                 if [ $thischannelage -le $MAX_CHANNEL_AGE ];then
-                    allfiledata="$allfiledata\\n$thischanneltitle\\n$thischanneldata"
+                    echo "$thischanneltitle\\n$thischanneldata" >> "${TEMPFILE}"
                 fi
             else
                 echo "Error in reading subscriptions list!"
-            fi
+            fi ) &
         done
+        wait
+        allfiledata=$(<"${TEMPFILE}")
         if [ -f "${CACHEDIR}"/watched_files.txt ];then
             # Filter and prepend § Exit
             {
-                echo "§ Exit"
+                echo "§ Exiter"
                 while IFS= read -r line; do
                     [[ "${line}" == "" ]] && continue
-                    id="${line##*| }"  # Extract the string after the last "| "
+                    id=$(echo "${line}" | awk -F'|' '{print $NF}' )  # Extract the string after the last "| "
                     command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${id}" "${CACHEDIR}/watched_files.txt")
                     count=$(eval "${command}")
                     if [ "$count" == "" ];then
@@ -316,17 +329,17 @@ choose_video () {
         loud "Choose Video Loop"
         ChosenString=""
         if [ "$1" == "g" ];then 
-            ChosenString=$(parse_subscriptions g 2>/dev/null | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
+            feeddata=$(parse_subscriptions g 2>/dev/null)
         else
-            ChosenString=$(parse_subscriptions 2>/dev/null | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
+            feeddata=$(parse_subscriptions 2>/dev/null)
         fi
+        ChosenString=$(echo "$feeddata" | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
         if [ "${ChosenString}" == "Error in reading subscriptions list!" ];then
             exit 98
         fi
         if [ "${ChosenString}" == "Error in reading chronological list!" ];then
             exit 97
         fi
-        loud "*${ChosenString}*"  
         if [[ $ChosenString =~ ^§ ]];then
             loop="no"
             exit
@@ -341,6 +354,10 @@ choose_video () {
                 play_video "${VideoId}"
         else
             loop="no"
+            exit
+        fi
+        if [ "$loop" != "yes" ];then
+            break
             exit
         fi
     done
