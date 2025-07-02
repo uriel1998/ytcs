@@ -14,8 +14,7 @@
 ### if file is first input, will parse the subscription file (and refresh cache files)
 ## if g - grouped output to rofi
 ## if c - chronological output to rofi
-#ROFI_THEME="sidebar_right"
-ROFI_THEME="arthur"
+ROFI_THEME="arthur_modified"
 SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
 
 if [ -z "${XDG_DATA_HOME}" ];then
@@ -141,6 +140,23 @@ is_file_newer_than_any_xml() {
     return 1  # file is not newer than any .xml
 }
 
+is_file_newer() {
+    local file1="$1"
+    local file2="$2"
+
+    # Make sure both directory and file exist
+    [[ ! -f "$file1" || ! -f "$file2" ]] && return 1
+
+    local file_ts
+    local file2_ts
+    file1_ts=$(stat -c %Y "$file1")
+    file2_ts=$(stat -c %Y "$file2")
+    if (( file1_ts > file2_ts )); then
+        return 0  # the file is newer than at least one .xml
+    else
+        return 1  # file is not newer than any .xml
+    fi
+}
 
 most_recent_age() {
     local data="$1"
@@ -179,6 +195,21 @@ days_to_iso8601() {
     local days_ago="$1"
     date -u -d "$days_ago days ago" +"%Y-%m-%dT%H:%M:%S+00:00"
 }
+
+add_human_date() {
+    while IFS= read -r line; do
+        # Use Bash pattern matching to extract the ISO date
+        if [[ "$line" =~ ([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\+00:00) ]]; then
+            iso="${BASH_REMATCH[1]}"
+            human=$(date -d "$iso" "+%-d %B %Y")
+            # Replace the ISO date with human | ISO
+            echo "${line//$iso/$human | $iso}"
+        else
+            echo "$line"
+        fi
+    done
+}
+
 
 mark_age() {
     local one_week_ago two_weeks_ago three_weeks_ago four_weeks_ago five_weeks_ago \
@@ -316,9 +347,9 @@ parse_subscriptions(){
                         count=0
                     fi
                     if [ $count -ge 1 ]; then
-                        echo "👀 $line" | mark_age
+                        echo "👀 $line" | mark_age | add_human_date
                     else
-                        echo "$line" | mark_age
+                        echo "$line" | mark_age | add_human_date
                     fi
                 done <<< "$(echo -e "$allfiledata" | sort -r -t '|' -k 2)"
             
@@ -410,25 +441,19 @@ choose_video () {
         if [ "${ChosenString}" == "Error in reading chronological list!" ];then
             exit 97
         fi
-        if [[ $ChosenString =~ ^§ ]];then
+        if [[ $ChosenString =~ ^§ ]] || [[ "$ChosenString" == "" ]];then
             loop="no"
-            exit
-        fi
-        if [[ "$ChosenString" == "" ]];then
-            loop="no"
-            exit
-        fi        
-        if [ -n "$ChosenString" ];then
-                VideoId=$(echo "$ChosenString" | awk -F '|' '{print $3}'| sed -e 's/^[ \t]*//')
+        else 
+            if [ -n "$ChosenString" ];then
+                VideoId=$(echo "$ChosenString" | awk -F '|' '{print $4}'| sed -e 's/^[ \t]*//')
                 echo "${VideoId}"
                 play_video "${VideoId}"
-        else
-            loop="no"
-            exit
+            else
+                loop="no"
+            fi
         fi
         if [ "$loop" != "yes" ];then
             break
-            exit
         fi
     done
 }
@@ -436,7 +461,7 @@ choose_video () {
 play_video () {
     TheVideo="${1}"
     echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
-    "${ytube_bin}" https://www.youtube.com/watch?v="${TheVideo}" -o - --ignore-errors --cookies-from-browser firefox --no-check-certificate --no-playlist --mark-watched --continue | "${mpv_bin}" - -force-seekable=yes 5
+    "${ytube_bin}" https://www.youtube.com/watch?v="${TheVideo}" -o - --ignore-errors --cookies-from-browser firefox --no-check-certificate --no-playlist --mark-watched --continue | "${mpv_bin}" --geometry=800x600+50%+50% --autofit=800x600 - -force-seekable=yes 5
 }
 
 ##############################################################################
@@ -472,10 +497,18 @@ while [ $# -gt 0 ]; do
                     ;;
         --grouped|-g) 
             choose_video g 
+            if is_file_newer "${CACHEDIR}/watched_files.txt" "${CACHEDIR}/grouped_data.txt"; then
+                loud "[info] Refreshing grouped data on exit"
+                parse_subscriptions g 2>/dev/null > "${CACHEDIR}/grouped_data.txt"
+            fi
             exit
             ;;
         --time|--chronological|-t|-c) 
-            choose_video c 
+            choose_video c
+            if is_file_newer "${CACHEDIR}/watched_files.txt" "${CACHEDIR}/time_data.txt"; then
+                loud "[info] Refreshing chronological data on exit"
+                parse_subscriptions 2>/dev/null > "${CACHEDIR}/time_data.txt"
+            fi
             exit
             ;;
         --subscription|-s) 
@@ -490,4 +523,5 @@ done
 
 
 
+    
 
