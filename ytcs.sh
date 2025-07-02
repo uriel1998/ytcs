@@ -360,36 +360,52 @@ parse_subscriptions(){
         #echo -e "$allfiledata" | sort -r -t '|' -k 2
     fi       
 }
+ 
 
 choose_subscription () {
-
+    TEMPFILE=$(mktemp)
     allchanneldata=""
-    for file in "$CACHEDIR"/*; do  
-        id=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
-        updated=$(grep -m 2 "<updated>" "$file" |tail -1 | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' )
+    watchcount=0
+    for file in "$CACHEDIR"/*; do 
+        [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
+        [[ "$(basename "$file")" == "grouped_data.txt" ]] && continue
+        [[ "$(basename "$file")" == "time_data.txt" ]] && continue
+        if [ $watchcount -gt 4 ];then
+            wait
+            watchcount=0
+        fi
+        watchcount=$(( watchcount + 1 ))  
+        (
+        #thischanneldata=""
+        id=$(basename ${file}) 
+        updated=$(grep -m 2 "<updated>" "$file" | tail -1 | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' )
+        human_date=$(date -d "$updated" +"%d %B")
         title=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' )
         if [ -n "$id" ];then
-            thischanneldata=$(printf "%s \t\t\t\t|%s|%s" "$title" "$id" "$updated")
-            allchanneldata=$(echo -e "$allchanneldata\\n$thischanneldata")
-            thischanneldata=""
+            printf "%s (%s)\t\t\t\t|%s|%s\n" "$title" "$human_date" "$id" "$updated" >> "${TEMPFILE}"
+            #thischanneldata=$(printf "%s \t\t\t\t|%s|%s" "$title" "$id" "$updated")
+            #allchanneldata=$(echo -e "$allchanneldata\\n$thischanneldata")
+            #thischanneldata=""
         fi
+        ) &
     done
-    
-    rezult=$(printf "1-By name A-Z\n2-By last updated\n3-By name Z-a" | rofi -i -dmenu -p "Sort how?" -theme DarkBlue)
+    # the awk omits those who don't have an updated date (and are therefore ill-formed)
+    cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""'  > /home/steven/tmp/out3.txt
+    #allchanneldata=$(cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""')
+    rezult=$(printf "1-By name A-Z\n2-By last updated\n3-By name Z-a\n" | rofi -i -dmenu -p "Sort how?" -theme "${ROFI_THEME}")
     case $rezult in 
-        1-*) allchanneldata=$(echo -e "$allchanneldata" | sort -t '|' -k 1 );;
-        2-*) allchanneldata=$(echo -e "$allchanneldata" | sort -r -t '|' -k 3 );;
-        3-*) allchanneldata=$(echo -e "$allchanneldata" | sort -r -t '|' -k 1 );;
+        1-*) allchanneldata=$({ echo "§ Exit"; cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""' | sort -t '|' -k 1; });;
+        2-*) allchanneldata=$({ echo "§ Exit"; cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""' | sort -r -t '|' -k 3; });;
+        3-*) allchanneldata=$({ echo "§ Exit"; cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""' | sort -r -t '|' -k 1; });;
     esac
-
     channelloop=yes
     
     while [ "$channelloop" == "yes" ];do 
-        ChosenChannel=$(echo "$allchanneldata" | rofi -i -dmenu -p "Which Channel?" -theme DarkBlue | awk -F '|' '{ print $2 }')    
+        ChosenChannel=$(echo "$allchanneldata" | rofi -i -dmenu -p "Which Channel?" -theme "${ROFI_THEME}" | awk -F '|' '{ print $2 }')    
         if [ -f "$CACHEDIR"/"$ChosenChannel" ];then
             loop=yes
             while [ "$loop" == "yes" ];do 
-                ChosenString=$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -5 | awk -F '|' '{print $2 " | " $3 " |" $1}' | rofi -i -dmenu -p "Which Channel?" -theme DarkBlue)
+                ChosenString=$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -25 | awk -F '|' '{print $2 " | " $3 " |" $1}' | rofi -i -dmenu -p "Which Channel?" -theme "${ROFI_THEME}")
                 if [ -n "$ChosenString" ];then
                     if [[ "$ChosenString" == "#"* ]] || [[ "$ChosenString" == §* ]] || [[ "$ChosenString" == "" ]] ;then
                         #Exit condition
