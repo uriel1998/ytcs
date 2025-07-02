@@ -11,12 +11,12 @@
 #
 ##############################################################################
 
-### if file is first input, will parse the subscription file (and refresh cache files)
-## if g - grouped output to rofi
-## if c - chronological output to rofi
 ROFI_THEME="arthur_modified"
+MAX_CHANNEL_AGE=182
+MAX_GROUPED_VIDS=10
 SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
 
+LOUD=0
 if [ -z "${XDG_DATA_HOME}" ];then
     export XDG_DATA_HOME="${HOME}/.local/share"
     export XDG_CONFIG_HOME="${HOME}/.config"
@@ -26,9 +26,6 @@ CACHEDIR="${XDG_DATA_HOME}/youtube-cli-subcriptions"
 if [ ! -d "${CACHEDIR}" ];then
     mkdir -p "${CACHEDIR}"
 fi
-LOUD=1
-MAX_CHANNEL_AGE=182
-MAX_GROUPED_VIDS=10
 wget_bin=$(which wget)
 mpv_bin=$(which mpv)
 grep_bin=$(which grep)
@@ -390,7 +387,6 @@ choose_subscription () {
         ) &
     done
     # the awk omits those who don't have an updated date (and are therefore ill-formed)
-    cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""'  > /home/steven/tmp/out3.txt
     #allchanneldata=$(cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""')
     rezult=$(printf "1-By name A-Z\n2-By last updated\n3-By name Z-a\n" | rofi -i -dmenu -p "Sort how?" -theme "${ROFI_THEME}")
     case $rezult in 
@@ -398,6 +394,7 @@ choose_subscription () {
         2-*) allchanneldata=$({ echo "§ Exit"; cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""' | sort -r -t '|' -k 3; });;
         3-*) allchanneldata=$({ echo "§ Exit"; cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""' | sort -r -t '|' -k 1; });;
     esac
+    rm "${TEMPFILE}"
     channelloop=yes
     
     while [ "$channelloop" == "yes" ];do 
@@ -477,7 +474,7 @@ choose_video () {
 play_video () {
     TheVideo="${1}"
     echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
-    "${ytube_bin}" https://www.youtube.com/watch?v="${TheVideo}" -o - --ignore-errors --cookies-from-browser firefox --no-check-certificate --no-playlist --mark-watched --continue | "${mpv_bin}" --geometry=800x600+50%+50% --autofit=800x600 - -force-seekable=yes 5
+    "${ytube_bin}" https://www.youtube.com/watch?v="${TheVideo}" -o - --ignore-errors --cookies-from-browser firefox --no-check-certificate --no-playlist --mark-watched --continue | "${mpv_bin}" --geometry=1366x768+50%+50% --autofit=1366x768 - -force-seekable=yes 5
 }
 
 ##############################################################################
