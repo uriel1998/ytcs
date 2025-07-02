@@ -14,7 +14,8 @@
 ### if file is first input, will parse the subscription file (and refresh cache files)
 ## if g - grouped output to rofi
 ## if c - chronological output to rofi
-ROFI_THEME="sidebar_right"
+#ROFI_THEME="sidebar_right"
+ROFI_THEME="arthur"
 SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
 
 if [ -z "${XDG_DATA_HOME}" ];then
@@ -68,15 +69,22 @@ import_subscriptions()
     if [ -z "$SUBSCRIPTIONFILE" ];then
         SUBSCRIPTIONFILE="$1"
     fi
-    
+    watchcount=0
     while read line; do
+        if [ $watchcount -gt 10 ];then
+            wait
+            watchcount=0
+        fi
+        watchcount=$(( watchcount + 1 ))  
+        (
         id=$(echo "$line"|awk -F ',' '{print $1}')
         url=$(echo "$line"|awk -F ',' '{print $2}')
         name=$(echo "$line"|awk -F ',' '{print $3}')
         if [[ "$id" != "Channel Id" ]];then
-            wget_string=$(printf "%s \"%s%s\" -O %s/%s" "${wget_bin}" "https://www.youtube.com/feeds/videos.xml?channel_id=" "${id}" "${CACHEDIR}" "${id}") 
+            wget_string=$(printf "%s -q \"%s%s\" -O %s/%s" "${wget_bin}" "https://www.youtube.com/feeds/videos.xml?channel_id=" "${id}" "${CACHEDIR}" "${id}") 
             eval "${wget_string}"
         fi
+        ) &
     done < "$SUBSCRIPTIONFILE"
     exit
 }
@@ -85,15 +93,19 @@ refresh_subscriptions() {
     loud "[info] Refreshing subscriptions"
     watchcount=0
     for file in "$CACHEDIR"/*; do  
-        if [ $watchcount -gt 4 ];then
+        [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
+        [[ "$(basename "$file")" == "grouped_data.txt" ]] && continue
+        [[ "$(basename "$file")" == "time_data.txt" ]] && continue    
+        if [ $watchcount -gt 10 ];then
             wait
             watchcount=0
         fi
         watchcount=$(( watchcount + 1 ))  
         (
-        id=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
+        id=$(basename ${file})
         if [ -f "$file" ];then
-            wget_string=$(printf "%s \"%s%s\" -O %s/%s" "${wget_bin}" "https://www.youtube.com/feeds/videos.xml?channel_id=" "$id" "$CACHEDIR" "$id") 
+            wget_string=$(printf "%s -q \"%s%s\" -O %s/%s" "${wget_bin}" "https://www.youtube.com/feeds/videos.xml?channel_id=" "$id" "$CACHEDIR" "$id") 
+            #echo "${wget_string}"
             eval "${wget_string}"
         fi
         id="" ) &
@@ -222,6 +234,7 @@ mark_age() {
 
 parse_subscriptions(){
     trap '' PIPE
+    allfiledata=""
     if [ "$1" = "g" ];then
         # this is per subscription, latest 5 
         TEMPFILE=$(mktemp)
@@ -273,7 +286,8 @@ parse_subscriptions(){
             }
         else
             { echo "§ Exit"; echo -e "$allfiledata"; }
-        fi        
+        fi     
+        rm "${TEMPFILE}"   
     else
         # This is chronological, all subscriptions
         shopt -s nullglob  # avoids looping if no match
@@ -388,6 +402,7 @@ choose_video () {
                 feeddata=$(<"${CACHEDIR}/time_data.txt")
             fi
         fi
+        # I guess it could just read from a file here, but... ah well.
         ChosenString=$(echo "$feeddata" | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
         if [ "${ChosenString}" == "Error in reading subscriptions list!" ];then
             exit 98

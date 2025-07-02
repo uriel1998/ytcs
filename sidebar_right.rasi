@@ -66,6 +66,7 @@ configuration {
     // Bold, Italic, Underline
     highlight:     underline bold #ffffff;
     font: "Source Code Pro 10";
+    text-color: #ffeedd; 
 }
 #window {
     location: east;
@@ -123,10 +124,11 @@ configuration {
     border-radius: 0px 0px 15px 15px;
     border-color: @foreground;
     border: 0px 2px 2px 2px;
-    background-color: #1c1c1ccc;
+    background-color: #383838;
     dynamic: false;
     lines: 10;
     color: @foreground;
+    text-color: #ffeedd; 
 }
 #element {
     padding: 3px;
@@ -135,6 +137,7 @@ configuration {
     border-radius: 4px;
     color: @foreground;
     font:inherit;
+    text-color: #ffeedd;  
 }
 #element normal normal {
     foreground: @foreground;
