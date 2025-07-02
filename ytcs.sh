@@ -82,15 +82,53 @@ import_subscriptions()
 }
 
 refresh_subscriptions() {
+    loud "[info] Refreshing subscriptions"
+    watchcount=0
     for file in "$CACHEDIR"/*; do  
+        if [ $watchcount -gt 4 ];then
+            wait
+            watchcount=0
+        fi
+        watchcount=$(( watchcount + 1 ))  
+        (
         id=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
         if [ -f "$file" ];then
             wget_string=$(printf "%s \"%s%s\" -O %s/%s" "${wget_bin}" "https://www.youtube.com/feeds/videos.xml?channel_id=" "$id" "$CACHEDIR" "$id") 
             eval "${wget_string}"
         fi
-        id=""
+        id="" ) &
     done
+    loud "[info] Refreshing grouped data"
+    parse_subscriptions g 2>/dev/null > "${CACHEDIR}/grouped_data.txt"        
+    loud "[info] Refreshing chronological data"
+    parse_subscriptions 2>/dev/null > "${CACHEDIR}/time_data.txt"
 }
+
+is_file_newer_than_any_xml() {
+    local dir="$1"
+    local file="$2"
+
+    # Make sure both directory and file exist
+    [[ ! -d "$dir" || ! -f "$file" ]] && return 1
+
+    local file_ts
+    file_ts=$(stat -c %Y "$file")
+    # Loop through files in the directory
+
+    for file in "${dir}"/*; do  
+        [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
+        [[ "$(basename "$file")" == "grouped_data.txt" ]] && continue
+        [[ "$(basename "$file")" == "time_data.txt" ]] && continue
+        [[ ! -e "$file" ]] && continue  # in case no matches
+        xml_ts=$(stat -c %Y "$file")
+        if (( file_ts > xml_ts )); then
+            return 0  # the file is newer than at least one .xml
+        fi
+    done
+
+    return 1  # file is not newer than any .xml
+}
+
 
 most_recent_age() {
     local data="$1"
@@ -191,6 +229,8 @@ parse_subscriptions(){
         watchcount=0
         for file in "${CACHEDIR}"/*; do  
             [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
+            [[ "$(basename "$file")" == "grouped_data.txt" ]] && continue
+            [[ "$(basename "$file")" == "time_data.txt" ]] && continue
             if [ $watchcount -gt 12 ];then
                 wait
                 watchcount=0
@@ -239,6 +279,8 @@ parse_subscriptions(){
         shopt -s nullglob  # avoids looping if no match
         for file in "${CACHEDIR}"/*; do  
             [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
+            [[ "$(basename "$file")" == "grouped_data.txt" ]] && continue
+            [[ "$(basename "$file")" == "time_data.txt" ]] && continue
             if [ -f "$file" ];then
                 chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
                 chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
@@ -321,17 +363,30 @@ choose_subscription () {
         fi
     done
     
-}
+}            
 
 choose_video () {
     loop="yes"
     while [ "$loop" == "yes" ]; do
-        loud "Choose Video Loop"
         ChosenString=""
         if [ "$1" == "g" ];then 
-            feeddata=$(parse_subscriptions g 2>/dev/null)
+            if is_file_newer_than_any_xml "${CACHEDIR}" "${CACHEDIR}/grouped_data.txt"; then
+                loud "[info] Loading time data file, one moment..."
+                feeddata=$(<"${CACHEDIR}/grouped_data.txt")
+            else
+                loud "[info] Rebuilding grouped data file, one moment..."
+                parse_subscriptions g 2>/dev/null > "${CACHEDIR}/grouped_data.txt"
+                feeddata=$(<"${CACHEDIR}/grouped_data.txt")
+            fi
         else
-            feeddata=$(parse_subscriptions 2>/dev/null)
+            if is_file_newer_than_any_xml "${CACHEDIR}" "${CACHEDIR}/time_data.txt"; then
+                loud "[info] Loading time data file, one moment..."
+                feeddata=$(<"${CACHEDIR}/time_data.txt")
+            else
+                loud "[info] Rebuilding time data file, one moment..."
+                parse_subscriptions 2>/dev/null > "${CACHEDIR}/time_data.txt"
+                feeddata=$(<"${CACHEDIR}/time_data.txt")
+            fi
         fi
         ChosenString=$(echo "$feeddata" | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
         if [ "${ChosenString}" == "Error in reading subscriptions list!" ];then
@@ -384,6 +439,9 @@ while [ $# -gt 0 ]; do
         --loud)     export LOUD=1
                     shift
                     ;;
+        --refresh)  refresh_subscriptions
+                    exit
+                    ;;                    
         --help|-h)     display_help
                     exit
                     ;;
