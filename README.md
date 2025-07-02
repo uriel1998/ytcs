@@ -1,7 +1,8 @@
- Youtube-CLI-Subscriptions README 
+ # ytcs.sh
  
  This script is a simple tool to fetch YouTube subscriptions via RSS feed and 
- watch them using mpv and youtube-dl, thus enabling cookies by firefox.
+ watch them using mpv and youtube-dl, thus enabling using your login cookies from
+ Firefox, and allowing the viewing of videos.
  
  The script presents the subscriptions in a rofi dropdown menu, making it easy to navigate and select the videos you want to watch. 
  
@@ -17,10 +18,7 @@
  ## Installation 
  
  This tool can be installed by cloning the repository to your local machine and then running the script. 
- 
- Use the following command to clone the repository: 
- 
-git clone https://github.com/your-github-username/your-repo-name.git 
+
  
  ## Usage
  
@@ -36,29 +34,31 @@ git clone https://github.com/your-github-username/your-repo-name.git
  
  For example, you can refresh your subscriptions using the --refresh command like this:
  
-`./youtube-cli-subscriptions.sh --refresh`
+`./ytcs.sh --refresh`
 
 Ideally, you'd do that with a cron job; it does take a moment, and caches the 
 results for quick user input.
  
  You can use the --import command to import your subscriptions from a csv file like this: 
  
-`./youtube-cli-subscriptions.sh --import /path/to/csv`
+`./ytcs.sh --import /path/to/csv`
 
 See the notes below.
  
  You can also browse your videos by group, by time or by subscription using the 
  --grouped , --time , and --subscription commands respectively. In grouped and 
  time based view, it will compare to a watched file, and update it if you've watched
- and videos.
+ and videos.  
+ 
+ Keep in mind that since it's powered by `rofi`, you can search among the titles in any of these views.
  
  
  ```
-./youtube-cli-subscriptions.sh --grouped 
+./ytcs.sh --grouped 
  
-./youtube-cli-subscriptions.sh --time 
+./ytcs.sh --time 
  
-./youtube-cli-subscriptions.sh --subscription 
+./ytcs.sh --subscription 
 ```
  
  ### Notes
@@ -82,3 +82,5 @@ TODO - sort grouped by channel age
 TODO - set up variables in .env or something
 TODO - varying video sizes defined
 TODO - set up better cookie import versions.
+TODO - mark watched from subscription browsing
+TODO - notifications for updating, etc, for when not run from a terminal
