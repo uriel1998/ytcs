@@ -28,4 +28,3 @@ MAX_CHANNEL_AGE - for grouped, any channel without a video newer than that will 
 
 TODO - sort grouped by channel age
 TODO - get browse by subscription working
-TODO - CACHE EVERYTHING DUMBASS.
