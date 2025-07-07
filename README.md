@@ -89,5 +89,5 @@ TODO - sort grouped by channel age
 TODO - set up variables in .env or something  
 TODO - varying video sizes defined  
 TODO - set up better cookie import versions.  
-TODO - mark watched from subscription browsing  
-TODO - notifications for updating, etc, for when not run from a terminal  
+TODO - filter *EXCLUDE* terms
+
