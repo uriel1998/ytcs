@@ -3,7 +3,7 @@
 
 ##############################################################################
 #
-#  youtube-cli-subscriptions -- to scroll through and view youtube videos 
+#  ytcs -- to scroll through and view youtube videos 
 #  through RSS feeds and yt-dlp and mpv
 #  
 #  (c) Steven Saus 2025
@@ -22,7 +22,7 @@ if [ -z "${XDG_DATA_HOME}" ];then
     export XDG_CONFIG_HOME="${HOME}/.config"
 fi
 
-CACHEDIR="${XDG_DATA_HOME}/youtube-cli-subcriptions"
+CACHEDIR="${XDG_DATA_HOME}/ytcs"
 if [ ! -d "${CACHEDIR}" ];then
     mkdir -p "${CACHEDIR}"
 fi
