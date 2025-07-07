@@ -41,6 +41,7 @@ function loud() {
 ##############################################################################    
     if [ $LOUD -eq 1 ];then
         echo "$@" 1>&2
+        notify-send "${@}" --icon youtube
     fi
 }
 
@@ -49,10 +50,12 @@ display_help(){
 # Show the Help
 ##############################################################################    
     echo "###################################################################"
+    echo "# ytcs.sh [--loud] [--help] [--import] [--refresh] [--subscription|--grouped|--time]"
+    echo "# --loud: Extra feedback, including notify-send (should be FIRST)"
     echo "# --help - shows this"
-    echo "# --import [/path/to/csv]: Import CSV of subscriptions"
+    echo "# --import /path/to/csv: Import CSV of subscriptions"
     echo "# --refresh: refresh subscriptions"
-    echo "# --subscription: browse by subscription"
+    echo "# Choose only ONE of these three as the LAST switch"
     echo "# --subscription: browse by subscription"
     echo "# --grouped: choose grouped by subscription"
     echo "# --time: choose in chronological order"
@@ -487,9 +490,9 @@ to_clipboards (){
 
 play_video () {
     TheVideo="${1}"
-    TheTitle="${2}"
+    TheTitle=$(echo "${2}" | cut -c 2- )
     if [ -f $(which notify-send) ];then
-        notify-send "Loading video ${TheTitle}..." --icon youtube
+        loud "Loading video ${TheTitle}..."
     fi
     echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
     to_clipboards "https://www.youtube.com/watch?v=${TheVideo}"
@@ -512,7 +515,7 @@ while [ $# -gt 0 ]; do
                     shift
                     ;;
         --refresh)  refresh_subscriptions
-                    exit
+                    shift
                     ;;                    
         --help|-h)     display_help
                     exit

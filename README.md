@@ -24,10 +24,17 @@
  
  There are several commands available with this script: 
  
- * --loud : This command provides more verbose output for debugging.
+ ytcs.sh [--loud] [--help] [--import FILENAME] [--refresh] [--subscription|--grouped|--time]"
+ 
+ You may use any combination of these:
+ 
+ * --loud : This command provides more verbose output for debugging and notify-send. Should be FIRST.
  * --refresh : Refresh your subscriptions.
  * --help or -h : Display help context (this, basically). 
  * --import or -i : Import subscriptions from a csv file. 
+ 
+ Choose ONE of the three of these:  
+ 
  * --grouped or -g : Display the videos grouped by subscriptions. 
  * --time --chronological -t or -c : Arrange and display the videos in chronological order. 
  * --subscription or -s : Select and view videos by browsing subscriptions.
