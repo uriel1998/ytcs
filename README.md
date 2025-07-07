@@ -90,4 +90,5 @@ TODO - set up variables in .env or something
 TODO - varying video sizes defined  
 TODO - set up better cookie import versions.  
 TODO - filter *EXCLUDE* terms
+TODO - show "viewed" in grouped by subscription as well
 

@@ -41,7 +41,7 @@ function loud() {
 ##############################################################################    
     if [ $LOUD -eq 1 ];then
         echo "$@" 1>&2
-        notify-send "${@}" --icon youtube
+        notify-send "${@}" --icon youtube --urgency=low
     fi
 }
 
