@@ -77,10 +77,10 @@ See the notes below.
  
 ### TODO
 
-TODO - I mean, it's spaghetti code. It works, it is nowhere near optimized, and is probably got issues in some way
-TODO - sort grouped by channel age
-TODO - set up variables in .env or something
-TODO - varying video sizes defined
-TODO - set up better cookie import versions.
-TODO - mark watched from subscription browsing
-TODO - notifications for updating, etc, for when not run from a terminal
+TODO - I mean, it's spaghetti code. It works, it is nowhere near optimized, and is probably got issues in some way  
+TODO - sort grouped by channel age  
+TODO - set up variables in .env or something  
+TODO - varying video sizes defined  
+TODO - set up better cookie import versions.  
+TODO - mark watched from subscription browsing  
+TODO - notifications for updating, etc, for when not run from a terminal  

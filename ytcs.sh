@@ -459,8 +459,9 @@ choose_video () {
         else 
             if [ -n "$ChosenString" ];then
                 VideoId=$(echo "$ChosenString" | awk -F '|' '{print $4}'| sed -e 's/^[ \t]*//')
+                VideoTitle=$(echo "$ChosenString" | awk -F '|' '{print $1}')
                 echo "${VideoId}"
-                play_video "${VideoId}"
+                play_video "${VideoId}" "${VideoTitle}"
             else
                 loop="no"
             fi
@@ -471,9 +472,27 @@ choose_video () {
     done
 }
 
+to_clipboards (){
+    input="${1}"
+    if [ -f $(which xclip) ];then
+        echo "${input}" | xclip -i -selection primary -r 
+        echo "${input}" | xclip -i -selection secondary -r 
+        echo "${input}" | xclip -i -selection clipboard -r 
+    fi
+    if [ -f $(which copyq) ];then
+        echo "${input}" | tr -d '/n' | /usr/bin/copyq write 0  - 
+        /usr/bin/copyq select 0
+    fi
+}
+
 play_video () {
     TheVideo="${1}"
+    TheTitle="${2}"
+    if [ -f $(which notify-send) ];then
+        notify-send "Loading video ${TheTitle}..." --icon youtube
+    fi
     echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
+    to_clipboards "https://www.youtube.com/watch?v=${TheVideo}"
     "${ytube_bin}" https://www.youtube.com/watch?v="${TheVideo}" -o - --ignore-errors --cookies-from-browser firefox --no-check-certificate --no-playlist --mark-watched --continue | "${mpv_bin}" --geometry=1366x768+50%+50% --autofit=1366x768 - -force-seekable=yes 5
 }
 
