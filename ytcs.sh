@@ -488,15 +488,58 @@ to_clipboards (){
     fi
 }
 
+# Not just marking watched, but HOW watched (in time)
+append_duration() {
+    local ID="$1"
+    local ELAPSED="$2"
+    local FILE="watched_files.txt"
+    local TMPFILE="$(mktemp)"
+    local UPDATED=0
+
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^youtube[[:space:]]+$ID([[:space:]]+([0-9]{2}:[0-9]{2}:[0-9]{2}))?$ ]]; then
+            current_elapsed="${BASH_REMATCH[2]}"
+            if [[ -z "$current_elapsed" || "$(date -u -d "$ELAPSED" +%s)" -gt "$(date -u -d "${current_elapsed:-00:00:00}" +%s)" ]]; then
+                echo "youtube $ID $ELAPSED" >> "$TMPFILE"
+            else
+                echo "$line" >> "$TMPFILE"
+            fi
+            UPDATED=1
+        else
+            echo "$line" >> "$TMPFILE"
+        fi
+    done < "$FILE"
+
+    if [[ $UPDATED -eq 0 ]]; then
+        echo "youtube $ID $ELAPSED" >> "$TMPFILE"
+    fi
+
+    mv "$TMPFILE" "$FILE"
+}
+
+
 play_video () {
     TheVideo="${1}"
     TheTitle=$(echo "${2}" | cut -c 2- )
     if [ -f $(which notify-send) ];then
         loud "Loading video ${TheTitle}..."
     fi
-    echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
+    
     to_clipboards "https://www.youtube.com/watch?v=${TheVideo}"
+    
+    # Okay, so cookie variables here.
+    # https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp
+    
+    # check for not just watched, but *duration* as well, and pass as a seek position for mpv
+    
+    
     "${ytube_bin}" https://www.youtube.com/watch?v="${TheVideo}" -o - --ignore-errors --cookies-from-browser firefox --no-check-certificate --no-playlist --mark-watched --continue | "${mpv_bin}" --geometry=1366x768+50%+50% --autofit=1366x768 - -force-seekable=yes 5
+    echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
+    
+    # this is where append_duration will get called after mpv's exit, to write the elapsed duration as well.
+    # Also want to capture 2> for this line
+    # [KAV: 00:00:08 / 00:17:36 (1%) A-V:  0.000 Cache: 10s/977KB for last position
+    
 }
 
 ##############################################################################

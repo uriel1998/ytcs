@@ -91,4 +91,7 @@ TODO - varying video sizes defined
 TODO - set up better cookie import versions.  
 TODO - filter *EXCLUDE* terms
 TODO - show "viewed" in grouped by subscription as well
+TODO - find # of processors for watchcount
+TODO - deduplicate watched list
+TODO - watched position in watched list
 
