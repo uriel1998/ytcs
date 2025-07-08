@@ -367,6 +367,11 @@ parse_subscriptions(){
         done
         wait
         allfiledata=$(cat ${TEMPFILE})
+        
+        
+        # TODO
+        
+        # so can do mark if watched with the PLAYING aspect and leave it out of here, making it more responsive overall, duh.
         mark_if_watched "${allfiledata}"
         rm "${TEMPFILE}"   
     else
