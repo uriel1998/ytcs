@@ -474,7 +474,9 @@ choose_video () {
             feeddata=$(<"${CACHEDIR}/time_data.txt")
         fi
         # I guess it could just read from a file here, but... ah well.
+        ChosenString=$(echo "$feeddata" | fzf)
         ChosenString=$(echo "$feeddata" | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
+        exit
         if [ "${ChosenString}" == "Error in reading subscriptions list!" ];then
             exit 98
         fi
