@@ -332,28 +332,7 @@ parse_subscriptions(){
         done
         wait
         allfiledata=$(<"${TEMPFILE}")
-        if [ -f "${CACHEDIR}"/watched_files.txt ];then
-            # Filter and prepend § Exit
-            {
-                echo "§ Exiter"
-                while IFS= read -r line; do
-                    [[ "${line}" == "" ]] && continue
-                    id=$(echo "${line}" | awk -F'|' '{print $NF}' )  # Extract the string after the last "| "
-                    command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${id}" "${CACHEDIR}/watched_files.txt")
-                    count=$(eval "${command}")
-                    if [ "$count" == "" ];then
-                        count=0
-                    fi
-                    if [ $count -ge 1 ]; then
-                        echo "👀 $line" | mark_age
-                    else
-                        echo "$line" | mark_age
-                    fi
-                done <<< "$(echo -e "$allfiledata")"
-            }
-        else
-            { echo "§ Exit"; echo -e "$allfiledata"; }
-        fi     
+        mark_if_watched "${allfiledata}"
         rm "${TEMPFILE}"   
     else
         # This is chronological, all subscriptions
@@ -370,30 +349,8 @@ parse_subscriptions(){
             else
                 echo "Error in reading chronological list!"
             fi
-        done
-        if [ -f "${CACHEDIR}"/watched_files.txt ];then
-            # Filter and prepend § Exit
-            {
-                echo "§ Exit"
-                while IFS= read -r line; do
-                    id="${line##*| }"  # Extract the string after the last "| "
-                    command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${id}" "${CACHEDIR}/watched_files.txt")
-                    count=$(eval "${command}")
-                    if [ "$count" == "" ];then
-                        count=0
-                    fi
-                    if [ $count -ge 1 ]; then
-                        echo "👀 $line" | mark_age | add_human_date
-                    else
-                        echo "$line" | mark_age | add_human_date
-                    fi
-                done <<< "$(echo -e "$allfiledata" | sort -r -t '|' -k 2)"
-            
-            }
-        else
-            { echo "§ Exit"; echo -e "$allfiledata" | sort -r -t '|' -k 2; }
-        fi
-        #echo -e "$allfiledata" | sort -r -t '|' -k 2
+        done        
+        mark_if_watched "$(echo -e "$allfiledata" | sort -r -t '|' -k 2)"
     fi       
 }
  
