@@ -84,6 +84,8 @@ See the notes below.
  
 ### TODO
 
+document copying to clipboards
+showing what it does
 TODO - I mean, it's spaghetti code. It works, it is nowhere near optimized, and is probably got issues in some way  
 TODO - sort grouped by channel age  
 TODO - set up variables in .env or something  
@@ -91,4 +93,3 @@ TODO - varying video sizes defined
 TODO - set up better cookie import versions.  
 TODO - filter *EXCLUDE* terms
 TODO - show "viewed" in grouped by subscription as well
-TODO - find # of processors for watchcount using nproc

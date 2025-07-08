@@ -220,6 +220,32 @@ add_human_date() {
     done
 }
 
+mark_if_watched() {
+    local data="${@}"
+    if [ -f "${CACHEDIR}"/watched_files.txt ];then
+        # Filter and prepend § Exit
+        {
+            echo "§ Exiter"
+            while IFS= read -r line; do
+                [[ "${line}" == "" ]] && continue
+                id=$(echo "${line}" | awk -F'|' '{print $NF}' )  # Extract the string after the last "| "
+                command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${id}" "${CACHEDIR}/watched_files.txt")
+                count=$(eval "${command}")
+                if [ "$count" == "" ];then
+                    count=0
+                fi
+                if [ $count -ge 1 ]; then
+                    printf "👀 %s\n" "${line}" 
+                else
+                    printf "%s\n" "${line}" 
+                fi
+            done <<< "$(echo "${data}")"
+        }
+    else
+        { echo "§ Exit"; echo -e "$data"; }
+    fi                 
+
+}
 
 mark_age() {
     local one_week_ago two_weeks_ago three_weeks_ago four_weeks_ago five_weeks_ago \
@@ -415,7 +441,18 @@ choose_subscription () {
         if [ -f "$CACHEDIR"/"$ChosenChannel" ];then
             loop=yes
             while [ "$loop" == "yes" ];do 
-                ChosenString=$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -25 | awk -F '|' '{print $2 " | " $3 " |" $1}' | rofi -i -dmenu -p "Which Channel?" -theme "${ROFI_THEME}")
+                # ADD IN WATCHED CHECK HERE
+                mark_if_watched "$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" \
+                    | grep -e "<yt:videoId>" -e "<title>" -e "<published>" \
+                    | awk -F '>' '{print $2}' \
+                    | awk -F '<' '{print $1}' \
+                    | sed 's/|//g' \
+                    | sed 'N;N;s/\n/|/g' \
+                    | sed 's/&quot;/‘/g' \
+                    | sed 's/&amp;/and/g' \
+                    | head -25 \
+                    | awk -F '|' '{printf "%s | %s | %s\n", $2, $3, $1}'
+                )" | rofi -i -dmenu -p "Which VIDEO?" -theme "${ROFI_THEME}"
                 if [ -n "$ChosenString" ];then
                     if [[ "$ChosenString" == "#"* ]] || [[ "$ChosenString" == §* ]] || [[ "$ChosenString" == "" ]] ;then
                         #Exit condition
@@ -505,17 +542,13 @@ play_video () {
         loud "Loading video ${TheTitle}..."
     fi
     
+    # copy url to clipboards
     to_clipboards "https://www.youtube.com/watch?v=${TheVideo}"
     
     # Okay, so cookie variables here.
     # https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp
-    
-    # check for not just watched, but *duration* as well, and pass as a seek position for mpv
-    
-
-
+ 
     video_url="https://www.youtube.com/watch?v=${TheVideo}"
-
     # Run yt-dlp and mpv in a monitored pipeline
     { "${ytube_bin}" "$video_url" \
         -o - \
@@ -530,14 +563,15 @@ play_video () {
         echo "Pipeline exited or mpv was terminated"
         pkill -P $$ "${ytube_bin##*/}" 2>/dev/null
     }
-
     
     command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${TheVideo}" "${CACHEDIR}/watched_files.txt")
     count=$(eval "${command}")
-    if [ "$count" == "" ];then
+    if [ "$count" == "0" ];then
+        loud "[info] Marking watched"
         echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
-    fi
-    
+    else
+        loud "[info] Already watched"
+    fi    
 }
 
 ##############################################################################
