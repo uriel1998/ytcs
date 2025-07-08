@@ -35,16 +35,25 @@ if [ "$dlp" != "" ];then
     ytube_bin="${dlp}"
 fi
 
+if [ -f $(which nproc) ];then
+    watchtop=$(nproc)
+else
+    watchtop=1
+fi
+
 function loud() {
 ##############################################################################
 # loud outputs on stderr 
 ##############################################################################    
     if [ $LOUD -eq 1 ];then
         echo "$@" 1>&2
-        notify-send "${@}" --icon youtube --urgency=low
+        # Strip ANSI escape codes and replace invalid UTF-8 with ?
+        local message
+        message=$(echo "${@}" | LC_ALL=C sed 's/\x1B\[[0-9;]*[a-zA-Z]//g' | iconv -f utf-8 -t utf-8//IGNORE)
+        notify-send "${message}" --icon youtube --urgency=low
     fi
 }
-
+ 
 display_help(){
 ##############################################################################
 # Show the Help
@@ -70,7 +79,7 @@ import_subscriptions()
     fi
     watchcount=0
     while read line; do
-        if [ $watchcount -gt 10 ];then
+        if [ $watchcount -gt $watchtop ];then
             wait
             watchcount=0
         fi
@@ -95,7 +104,7 @@ refresh_subscriptions() {
         [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
         [[ "$(basename "$file")" == "grouped_data.txt" ]] && continue
         [[ "$(basename "$file")" == "time_data.txt" ]] && continue    
-        if [ $watchcount -gt 10 ];then
+        if [ $watchcount -gt $watchtop ];then
             wait
             watchcount=0
         fi
@@ -113,6 +122,7 @@ refresh_subscriptions() {
     parse_subscriptions g 2>/dev/null > "${CACHEDIR}/grouped_data.txt"        
     loud "[info] Refreshing chronological data"
     parse_subscriptions 2>/dev/null > "${CACHEDIR}/time_data.txt"
+    loud "[info] Refresh complete"
 }
 
 is_file_newer_than_any_xml() {
@@ -275,7 +285,7 @@ parse_subscriptions(){
             [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
             [[ "$(basename "$file")" == "grouped_data.txt" ]] && continue
             [[ "$(basename "$file")" == "time_data.txt" ]] && continue
-            if [ $watchcount -gt 12 ];then
+            if [ $watchcount -gt $watchtop ];then
                 wait
                 watchcount=0
             fi
@@ -370,7 +380,7 @@ choose_subscription () {
         [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
         [[ "$(basename "$file")" == "grouped_data.txt" ]] && continue
         [[ "$(basename "$file")" == "time_data.txt" ]] && continue
-        if [ $watchcount -gt 4 ];then
+        if [ $watchcount -gt $watchtop ];then
             wait
             watchcount=0
         fi
@@ -488,39 +498,9 @@ to_clipboards (){
     fi
 }
 
-# Not just marking watched, but HOW watched (in time)
-append_duration() {
-    local ID="$1"
-    local ELAPSED="$2"
-    local FILE="watched_files.txt"
-    local TMPFILE="$(mktemp)"
-    local UPDATED=0
-
-    while IFS= read -r line; do
-        if [[ "$line" =~ ^youtube[[:space:]]+$ID([[:space:]]+([0-9]{2}:[0-9]{2}:[0-9]{2}))?$ ]]; then
-            current_elapsed="${BASH_REMATCH[2]}"
-            if [[ -z "$current_elapsed" || "$(date -u -d "$ELAPSED" +%s)" -gt "$(date -u -d "${current_elapsed:-00:00:00}" +%s)" ]]; then
-                echo "youtube $ID $ELAPSED" >> "$TMPFILE"
-            else
-                echo "$line" >> "$TMPFILE"
-            fi
-            UPDATED=1
-        else
-            echo "$line" >> "$TMPFILE"
-        fi
-    done < "$FILE"
-
-    if [[ $UPDATED -eq 0 ]]; then
-        echo "youtube $ID $ELAPSED" >> "$TMPFILE"
-    fi
-
-    mv "$TMPFILE" "$FILE"
-}
-
-
 play_video () {
     TheVideo="${1}"
-    TheTitle=$(echo "${2}" | cut -c 2- )
+    TheTitle=$(echo "${2}" | cut -c 2- | sed 's/👀//g' )
     if [ -f $(which notify-send) ];then
         loud "Loading video ${TheTitle}..."
     fi
@@ -532,13 +512,31 @@ play_video () {
     
     # check for not just watched, but *duration* as well, and pass as a seek position for mpv
     
+
+
+    video_url="https://www.youtube.com/watch?v=${TheVideo}"
+
+    # Run yt-dlp and mpv in a monitored pipeline
+    { "${ytube_bin}" "$video_url" \
+        -o - \
+        --ignore-errors \
+        --cookies-from-browser firefox \
+        --no-check-certificate \
+        --no-playlist \
+        --mark-watched \
+        --continue \
+        | "${mpv_bin}" --geometry=1366x768+50%+50% --autofit=1366x768 - --force-seekable=yes; 
+    } || {
+        echo "Pipeline exited or mpv was terminated"
+        pkill -P $$ "${ytube_bin##*/}" 2>/dev/null
+    }
+
     
-    "${ytube_bin}" https://www.youtube.com/watch?v="${TheVideo}" -o - --ignore-errors --cookies-from-browser firefox --no-check-certificate --no-playlist --mark-watched --continue | "${mpv_bin}" --geometry=1366x768+50%+50% --autofit=1366x768 - -force-seekable=yes 5
-    echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
-    
-    # this is where append_duration will get called after mpv's exit, to write the elapsed duration as well.
-    # Also want to capture 2> for this line
-    # [KAV: 00:00:08 / 00:17:36 (1%) A-V:  0.000 Cache: 10s/977KB for last position
+    command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${TheVideo}" "${CACHEDIR}/watched_files.txt")
+    count=$(eval "${command}")
+    if [ "$count" == "" ];then
+        echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
+    fi
     
 }
 
@@ -554,10 +552,10 @@ while [ $# -gt 0 ]; do
 # You have to have the shift or else it will keep looping...
     option="$1"
     case $option in
-        --loud)     export LOUD=1
+        --loud|-l)     export LOUD=1
                     shift
                     ;;
-        --refresh)  refresh_subscriptions
+        --refresh|-r)  refresh_subscriptions
                     shift
                     ;;                    
         --help|-h)     display_help
@@ -578,6 +576,7 @@ while [ $# -gt 0 ]; do
             if is_file_newer "${CACHEDIR}/watched_files.txt" "${CACHEDIR}/grouped_data.txt"; then
                 loud "[info] Refreshing grouped data on exit"
                 parse_subscriptions g 2>/dev/null > "${CACHEDIR}/grouped_data.txt"
+                loud "[info] Finished refreshing grouped data on exit"
             fi
             exit
             ;;
@@ -586,6 +585,7 @@ while [ $# -gt 0 ]; do
             if is_file_newer "${CACHEDIR}/watched_files.txt" "${CACHEDIR}/time_data.txt"; then
                 loud "[info] Refreshing chronological data on exit"
                 parse_subscriptions 2>/dev/null > "${CACHEDIR}/time_data.txt"
+                loud "[info] Finished refreshing chronological data on exit"
             fi
             exit
             ;;
