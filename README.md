@@ -57,7 +57,7 @@ You can also browse your videos by group, by time or by subscription using the
 time based view, it will compare to a watched file, and update it if you've watched
 and videos.  
 
-Keep in mind that since it's powered by `rofi`, you can search among the titles in any of these views.
+Keep in mind that since it's powered by `rofi` or `fzf`, you can search among the titles in any of these views.
 
 
 ```
@@ -116,3 +116,6 @@ TODO - Demo
 TODO - I mean, it's spaghetti code. It works, it is nowhere near optimized, and is probably got issues in some way  
 TODO - sort grouped by channel age (this is REALLY kicking my ass.) 
 TODO - filter *EXCLUDE* terms (new feature)
+TODO - locks on data files 
+TODO - a way to update in the background and then swap the cache out once it's rebuilt in the background (that'd be FAB)
+TODO - or to update similarly to how I do with the subscription, but that's rebuilt on the fly d/t being smaller. But maybe explicitly moving the analysis strings out of the cache creation portion and into the display portion?
