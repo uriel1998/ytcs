@@ -71,7 +71,7 @@ function loud() {
 ##############################################################################    
     if [ $LOUD -eq 1 ];then
         echo "$@" 1>&2
-        if [ "$CLIMODE" != "0" ];then
+        if [ "$CLIMODE" != "1" ];then
             # Strip ANSI escape codes and replace invalid UTF-8 with ?
             local message
             message=$(echo "${@}" | LC_ALL=C sed 's/\x1B\[[0-9;]*[a-zA-Z]//g' | iconv -f utf-8 -t utf-8//IGNORE)
@@ -415,8 +415,11 @@ choose_subscription () {
         ) &
     done
     # the awk omits those who don't have an updated date (and are therefore ill-formed)
-    #rezult=$(printf "1-By last updated\n2-By name A-Z\n3-By name Z-a\n" | fzf --separator='|' )
-    rezult=$(printf "1-By last updated\n2-By name A-Z\n3-By name Z-a\n" | rofi -i -dmenu -p "Sort how?" -theme "${ROFI_THEME}")
+    if [ "$CLIMODE" == "1" ];then
+        rezult=$(printf "1-By last updated\n2-By name A-Z\n3-By name Z-a\n" | fzf --separator='|' )
+    else
+        rezult=$(printf "1-By last updated\n2-By name A-Z\n3-By name Z-a\n" | rofi -i -dmenu -p "Sort how?" -theme "${ROFI_THEME}")
+    fi
     case $rezult in 
         1-*) allchanneldata=$({ echo "§ Exit"; cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""' | sort -r -t '|' -k 3; });;
         2-*) allchanneldata=$({ echo "§ Exit"; cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""' | sort -t '|' -k 1; });;
@@ -426,42 +429,46 @@ choose_subscription () {
     channelloop=yes
     
     while [ "$channelloop" == "yes" ];do 
-        #ChosenChannel=$(echo "$allchanneldata" | fzf --separator='|' | awk -F '|' '{ print $2 }')
-        ChosenChannel=$(echo "$allchanneldata" | rofi -i -dmenu -p "Which Channel?" -theme "${ROFI_THEME}" | awk -F '|' '{ print $2 }')    
+        if [ "$CLIMODE" == "1" ];then
+            ChosenChannel=$(echo "$allchanneldata" | fzf --separator='|' | awk -F '|' '{ print $2 }')
+        else
+            ChosenChannel=$(echo "$allchanneldata" | rofi -i -dmenu -p "Which Channel?" -theme "${ROFI_THEME}" | awk -F '|' '{ print $2 }')    
+        fi
         if [ -f "$CACHEDIR"/"$ChosenChannel" ];then
             loop=yes
             while [ "$loop" == "yes" ];do 
-#                ChosenString=$(mark_if_watched "$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" \
-                    | grep -e "<yt:videoId>" -e "<title>" -e "<published>" \
-                    | awk -F '>' '{print $2}' \
-                    | awk -F '<' '{print $1}' \
-                    | sed 's/|//g' \
-                    | sed 'N;N;s/\n/|/g' \
-                    | sed 's/&quot;/‘/g' \
-                    | sed 's/&amp;/and/g' \
-                    | head -25 \
-                    | awk -F '|' '{printf "%s | %s | %s\n", $2, $3, $1}')" | fzf --separator='|')
-                
-                
-                
-                ChosenString=$(mark_if_watched "$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" \
-                    | grep -e "<yt:videoId>" -e "<title>" -e "<published>" \
-                    | awk -F '>' '{print $2}' \
-                    | awk -F '<' '{print $1}' \
-                    | sed 's/|//g' \
-                    | sed 'N;N;s/\n/|/g' \
-                    | sed 's/&quot;/‘/g' \
-                    | sed 's/&amp;/and/g' \
-                    | head -25 \
-                    | awk -F '|' '{printf "%s | %s | %s\n", $2, $3, $1}'
-                )" | rofi -i -dmenu -p "Which VIDEO?" -theme "${ROFI_THEME}")
+                if [ "$CLIMODE" == "1" ];then
+                    ChosenString=$(mark_if_watched "$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" \
+                        | grep -e "<yt:videoId>" -e "<title>" -e "<published>" \
+                        | awk -F '>' '{print $2}' \
+                        | awk -F '<' '{print $1}' \
+                        | sed 's/|//g' \
+                        | sed 'N;N;s/\n/|/g' \
+                        | sed 's/&quot;/‘/g' \
+                        | sed 's/&amp;/and/g' \
+                        | head -25 \
+                        | awk -F '|' '{printf "%s | %s | %s\n", $2, $3, $1}')" | fzf --separator='|')
+                else
+                    ChosenString=$(mark_if_watched "$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" \
+                        | grep -e "<yt:videoId>" -e "<title>" -e "<published>" \
+                        | awk -F '>' '{print $2}' \
+                        | awk -F '<' '{print $1}' \
+                        | sed 's/|//g' \
+                        | sed 'N;N;s/\n/|/g' \
+                        | sed 's/&quot;/‘/g' \
+                        | sed 's/&amp;/and/g' \
+                        | head -25 \
+                        | awk -F '|' '{printf "%s | %s | %s\n", $2, $3, $1}'
+                    )" | rofi -i -dmenu -p "Which VIDEO?" -theme "${ROFI_THEME}")
+                fi
                 if [ -n "$ChosenString" ];then
                     if [[ "$ChosenString" == "#"* ]] || [[ "$ChosenString" == §* ]] || [[ "$ChosenString" == "" ]] ;then
                         #Exit condition
                         loop=""
                     else
                         VideoId=$(echo "$ChosenString" | awk -F '|' '{print $4}'| sed -e 's/^[ \t]*//')
-                        play_video "$VideoId"
+                        VideoTitle=$(echo "$ChosenString" | awk -F '|' '{print $1}')
+                        play_video "${VideoId}" "${VideoTitle}"
                     fi
                 else
                     #Exit condition
@@ -497,9 +504,11 @@ choose_video () {
             feeddata=$(<"${CACHEDIR}/time_data.txt")
         fi
         # I guess it could just read from a file here, but... ah well.
-        #ChosenString=$(echo "$feeddata" | fzf --separator='|' )
-        ChosenString=$(echo "$feeddata" | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
-        exit
+        if [ "$CLIMODE" == "1" ];then
+            ChosenString=$(echo "$feeddata" | fzf --separator='|' )
+        else
+            ChosenString=$(echo "$feeddata" | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
+        fi
         if [ "${ChosenString}" == "Error in reading subscriptions list!" ];then
             exit 98
         fi
@@ -539,7 +548,8 @@ to_clipboards (){
 
 play_video () {
     TheVideo="${1}"
-    TheTitle=$(echo "${2}" | cut -c 2- | sed 's/👀//g' )
+    export TheTitle=""
+    export TheTitle=$(echo "${2}" | cut -c 4- | sed 's/👀//g' )
     if [ -f $(which notify-send) ];then
         loud "Loading video ${TheTitle}..."
     fi
@@ -557,7 +567,7 @@ play_video () {
         --no-playlist \
         --mark-watched \
         --continue \
-        | "${mpv_bin}" --geometry=${GEOMETRY1} --autofit=${GEOMETRY2} - --force-seekable=yes; 
+        | "${mpv_bin}" --title=\""${TheTitle}"\" --geometry=${GEOMETRY1} --autofit=${GEOMETRY2} - --force-seekable=yes; 
     } || {
         echo "Pipeline exited or mpv was terminated"
         pkill -P $$ "${ytube_bin##*/}" 2>/dev/null
