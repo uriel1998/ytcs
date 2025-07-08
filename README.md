@@ -80,6 +80,8 @@ export MAX_GROUPED_VIDS=10
 export LOUD=0
 export YTDLP_COOKIES="firefox"
 export MARK_AGE="TRUE"
+export GEOMETRY1="1366x768+50%+50%"
+export GEOMETRY2="1366x768"
 ```
 
 The value `watchtop` is used for process control; while parsing data, `ytcs` will attempt to use
@@ -91,6 +93,8 @@ I personally use the "arthur_modified" rofi theme included here which has some s
 `YTDLP_COOKIES` is used to control which browser `yt-dlp` [gets cookies from](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp).
 
 `MARK_AGE` determines whether the visual marking of video age is displayed, change to anything but "TRUE" to turn off.
+ 
+ `GEOMETRY1` and `GEOMETRY2` are for `mpv`; they correspond to `--geometry=${GEOMETRY1} --autofit=${GEOMETRY2}`.
  
 ### Notes
  
@@ -105,13 +109,11 @@ I personally use the "arthur_modified" rofi theme included here which has some s
  *  This script is intended for personal use and not to be utilized for streaming without permission from the respective YouTube creators. Ensure you comply with 
  the terms and conditions from YouTube.
  
- * It will 
  
 ### TODO
 
-showing what it does
+TODO - Demo
 TODO - I mean, it's spaghetti code. It works, it is nowhere near optimized, and is probably got issues in some way  
-TODO - sort grouped by channel age (this is REALLY kicking my ass.)
-TODO - varying video sizes defined  
+TODO - sort grouped by channel age (this is REALLY kicking my ass.) 
 TODO - filter *EXCLUDE* terms
 

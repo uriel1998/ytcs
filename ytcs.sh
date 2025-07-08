@@ -21,9 +21,9 @@ else
     export MAX_GROUPED_VIDS=10
     export YTDLP_COOKIES="firefox"
     export MARK_AGE="TRUE"
+    export GEOMETRY1="1366x768+50%+50%"
+    export GEOMETRY2="1366x768"
 fi
-
-
 
 if [ -z "${XDG_DATA_HOME}" ];then
     export XDG_DATA_HOME="${HOME}/.local/share"
@@ -532,7 +532,7 @@ play_video () {
         --no-playlist \
         --mark-watched \
         --continue \
-        | "${mpv_bin}" --geometry=1366x768+50%+50% --autofit=1366x768 - --force-seekable=yes; 
+        | "${mpv_bin}" --geometry=${GEOMETRY1} --autofit=${GEOMETRY2} - --force-seekable=yes; 
     } || {
         echo "Pipeline exited or mpv was terminated"
         pkill -P $$ "${ytube_bin##*/}" 2>/dev/null
