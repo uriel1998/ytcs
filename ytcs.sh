@@ -11,18 +11,23 @@
 #
 ##############################################################################
 
-SCRIPT_DIR="$( cd "$(dirname "$0")" ; pwd -P )"
+# defaults
+ROFI_THEME="arthur"
+MAX_CHANNEL_AGE=182
+MAX_GROUPED_VIDS=10
+YTDLP_COOKIES="firefox"
+MARK_AGE="TRUE"
+GEOMETRY1="1366x768+50%+50%"
+GEOMETRY2="1366x768"
+CLIMODE=0
 watchtop=""
+
+SCRIPT_DIR="$( cd "$(dirname "$0")" ; pwd -P )"
+
+
+# Overwrite defaults via env
 if [ -f "${SCRIPT_DIR}/ytcs.env" ];then
     source "${SCRIPT_DIR}/ytcs.env"
-else
-    export ROFI_THEME="arthur"
-    export MAX_CHANNEL_AGE=182
-    export MAX_GROUPED_VIDS=10
-    export YTDLP_COOKIES="firefox"
-    export MARK_AGE="TRUE"
-    export GEOMETRY1="1366x768+50%+50%"
-    export GEOMETRY2="1366x768"
 fi
 
 if [ -z "${XDG_DATA_HOME}" ];then
@@ -66,10 +71,12 @@ function loud() {
 ##############################################################################    
     if [ $LOUD -eq 1 ];then
         echo "$@" 1>&2
-        # Strip ANSI escape codes and replace invalid UTF-8 with ?
-        local message
-        message=$(echo "${@}" | LC_ALL=C sed 's/\x1B\[[0-9;]*[a-zA-Z]//g' | iconv -f utf-8 -t utf-8//IGNORE)
-        notify-send "${message}" --icon youtube --urgency=low
+        if [ "$CLIMODE" != "0" ];then
+            # Strip ANSI escape codes and replace invalid UTF-8 with ?
+            local message
+            message=$(echo "${@}" | LC_ALL=C sed 's/\x1B\[[0-9;]*[a-zA-Z]//g' | iconv -f utf-8 -t utf-8//IGNORE)
+            notify-send "${message}" --icon youtube --urgency=low
+        fi
     fi
 }
  
@@ -79,6 +86,8 @@ display_help(){
 ##############################################################################    
     echo "###################################################################"
     echo "# ytcs.sh [--loud] [--help] [--import] [--refresh] [--subscription|--grouped|--time]"
+    echo "# "
+    echo "# --cli: CLI mode, no notify-send, uses fzf"
     echo "# --loud: Extra feedback, including notify-send (should be FIRST)"
     echo "# --help - shows this"
     echo "# --import /path/to/csv: Import CSV of subscriptions"
@@ -406,6 +415,7 @@ choose_subscription () {
         ) &
     done
     # the awk omits those who don't have an updated date (and are therefore ill-formed)
+    #rezult=$(printf "1-By last updated\n2-By name A-Z\n3-By name Z-a\n" | fzf --separator='|' )
     rezult=$(printf "1-By last updated\n2-By name A-Z\n3-By name Z-a\n" | rofi -i -dmenu -p "Sort how?" -theme "${ROFI_THEME}")
     case $rezult in 
         1-*) allchanneldata=$({ echo "§ Exit"; cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""' | sort -r -t '|' -k 3; });;
@@ -416,11 +426,24 @@ choose_subscription () {
     channelloop=yes
     
     while [ "$channelloop" == "yes" ];do 
+        #ChosenChannel=$(echo "$allchanneldata" | fzf --separator='|' | awk -F '|' '{ print $2 }')
         ChosenChannel=$(echo "$allchanneldata" | rofi -i -dmenu -p "Which Channel?" -theme "${ROFI_THEME}" | awk -F '|' '{ print $2 }')    
         if [ -f "$CACHEDIR"/"$ChosenChannel" ];then
             loop=yes
             while [ "$loop" == "yes" ];do 
-                # ADD IN WATCHED CHECK HERE
+#                ChosenString=$(mark_if_watched "$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" \
+                    | grep -e "<yt:videoId>" -e "<title>" -e "<published>" \
+                    | awk -F '>' '{print $2}' \
+                    | awk -F '<' '{print $1}' \
+                    | sed 's/|//g' \
+                    | sed 'N;N;s/\n/|/g' \
+                    | sed 's/&quot;/‘/g' \
+                    | sed 's/&amp;/and/g' \
+                    | head -25 \
+                    | awk -F '|' '{printf "%s | %s | %s\n", $2, $3, $1}')" | fzf --separator='|')
+                
+                
+                
                 ChosenString=$(mark_if_watched "$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" \
                     | grep -e "<yt:videoId>" -e "<title>" -e "<published>" \
                     | awk -F '>' '{print $2}' \
@@ -474,7 +497,7 @@ choose_video () {
             feeddata=$(<"${CACHEDIR}/time_data.txt")
         fi
         # I guess it could just read from a file here, but... ah well.
-        ChosenString=$(echo "$feeddata" | fzf)
+        #ChosenString=$(echo "$feeddata" | fzf --separator='|' )
         ChosenString=$(echo "$feeddata" | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
         exit
         if [ "${ChosenString}" == "Error in reading subscriptions list!" ];then
@@ -562,6 +585,9 @@ while [ $# -gt 0 ]; do
 # You have to have the shift or else it will keep looping...
     option="$1"
     case $option in
+        --cli)     export CLIMODE=1
+                    shift
+                    ;;        
         --loud|-l)     export LOUD=1
                     shift
                     ;;
