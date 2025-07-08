@@ -11,12 +11,18 @@
 #
 ##############################################################################
 
-ROFI_THEME="arthur_modified"
-MAX_CHANNEL_AGE=182
-MAX_GROUPED_VIDS=10
 SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
+watchtop=""
+if [ -f "${SCRIPT_DIR}/ytcs.env" ]
+    source "${SCRIPT_DIR}/maubot_vars.env"
+else
+    export ROFI_THEME="arthur_modified"
+    export MAX_CHANNEL_AGE=182
+    export MAX_GROUPED_VIDS=10
+fi
 
-LOUD=0
+
+
 if [ -z "${XDG_DATA_HOME}" ];then
     export XDG_DATA_HOME="${HOME}/.local/share"
     export XDG_CONFIG_HOME="${HOME}/.config"
@@ -35,10 +41,21 @@ if [ "$dlp" != "" ];then
     ytube_bin="${dlp}"
 fi
 
-if [ -f $(which nproc) ];then
-    watchtop=$(nproc)
+# Some error checking so you don't make more spawns than cores
+if [ "$watchtop" == "" ];then
+    if [ -f $(which nproc) ];then
+        watchtop=$(nproc)
+    else
+        watchtop=1
+    fi
 else
-    watchtop=1
+    if [ -f $(which nproc) ];then
+        if [ $watchtop -gt $(nproc) ];then
+            watchtop=$(nproc)
+        fi
+    else
+        watchtop=1
+    fi
 fi
 
 function loud() {
@@ -228,16 +245,20 @@ mark_if_watched() {
             echo "§ Exiter"
             while IFS= read -r line; do
                 [[ "${line}" == "" ]] && continue
-                id=$(echo "${line}" | awk -F'|' '{print $NF}' )  # Extract the string after the last "| "
-                command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${id}" "${CACHEDIR}/watched_files.txt")
-                count=$(eval "${command}")
-                if [ "$count" == "" ];then
-                    count=0
-                fi
-                if [ $count -ge 1 ]; then
-                    printf "👀 %s\n" "${line}" 
+                if [[ $line == *"📺"* ]];then
+                    printf "\n%s\n" "${line}"
                 else
-                    printf "%s\n" "${line}" 
+                    id=$(echo "${line}" | awk -F'|' '{print $NF}' )  # Extract the string after the last "| "
+                    command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${id}" "${CACHEDIR}/watched_files.txt")
+                    count=$(eval "${command}")
+                    if [ "$count" == "" ];then
+                        count=0
+                    fi
+                    if [ $count -ge 1 ]; then
+                        printf "👀 %s\n" "${line}" | mark_age | add_human_date
+                    else
+                        printf "%s\n" "${line}" | mark_age | add_human_date
+                    fi
                 fi
             done <<< "$(echo "${data}")"
         }
@@ -299,6 +320,7 @@ mark_age() {
     done  
 }
 
+
 parse_subscriptions(){
     trap '' PIPE
     allfiledata=""
@@ -322,16 +344,16 @@ parse_subscriptions(){
                 chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
                 thischanneldata=$(sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -${MAX_GROUPED_VIDS} | awk -F '|' '{print $2 " | " $3 " |" $1}')
                 thischannelage=$(most_recent_age "$thischanneldata")
-                thischanneltitle=$(printf "§ 📺 %s -%s" "$chantitle" "$thischannelage")
+                thischanneltitle=$(printf "§ 📺 %s - %s" "$chantitle" "$thischannelage")
                 if [ $thischannelage -le $MAX_CHANNEL_AGE ];then
-                    echo "$thischanneltitle\\n$thischanneldata" >> "${TEMPFILE}"
+                    printf "\n%s\n%s\n" "$thischanneltitle" "$thischanneldata" >> "${TEMPFILE}"
                 fi
             else
                 echo "Error in reading subscriptions list!"
             fi ) &
         done
         wait
-        allfiledata=$(<"${TEMPFILE}")
+        allfiledata=$(cat ${TEMPFILE})
         mark_if_watched "${allfiledata}"
         rm "${TEMPFILE}"   
     else
@@ -349,7 +371,8 @@ parse_subscriptions(){
             else
                 echo "Error in reading chronological list!"
             fi
-        done        
+        done
+        
         mark_if_watched "$(echo -e "$allfiledata" | sort -r -t '|' -k 2)"
     fi       
 }
@@ -427,7 +450,6 @@ choose_subscription () {
             channelloop=""
         fi
     done
-    
 }            
 
 choose_video () {
@@ -437,21 +459,20 @@ choose_video () {
         if [ "$1" == "g" ];then 
             if is_file_newer_than_any_xml "${CACHEDIR}" "${CACHEDIR}/grouped_data.txt"; then
                 loud "[info] Loading time data file, one moment..."
-                feeddata=$(<"${CACHEDIR}/grouped_data.txt")
             else
                 loud "[info] Rebuilding grouped data file, one moment..."
                 parse_subscriptions g 2>/dev/null > "${CACHEDIR}/grouped_data.txt"
-                feeddata=$(<"${CACHEDIR}/grouped_data.txt")
             fi
+            feeddata=$(<"${CACHEDIR}/grouped_data.txt")
         else
             if is_file_newer_than_any_xml "${CACHEDIR}" "${CACHEDIR}/time_data.txt"; then
                 loud "[info] Loading time data file, one moment..."
-                feeddata=$(<"${CACHEDIR}/time_data.txt")
+                
             else
                 loud "[info] Rebuilding time data file, one moment..."
                 parse_subscriptions 2>/dev/null > "${CACHEDIR}/time_data.txt"
-                feeddata=$(<"${CACHEDIR}/time_data.txt")
             fi
+            feeddata=$(<"${CACHEDIR}/time_data.txt")
         fi
         # I guess it could just read from a file here, but... ah well.
         ChosenString=$(echo "$feeddata" | rofi -i -dmenu -p "Which video?" -theme ${ROFI_THEME})
