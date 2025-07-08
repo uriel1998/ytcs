@@ -67,29 +67,51 @@ See the notes below.
  
 ./ytcs.sh --subscription 
 ```
+
+### Configuration
+
+Rename the file `ytcs.env.example` to `ytcs.env` and edit it. The example file has the defaults:
+
+```
+export ROFI_THEME="arthur"
+export MAX_CHANNEL_AGE=182
+export MAX_GROUPED_VIDS=10
+#export watchtop=4
+export LOUD=0
+export YTDLP_COOKIES="firefox"
+export MARK_AGE="TRUE"
+```
+
+The value `watchtop` is used for process control; while parsing data, `ytcs` will attempt to use
+a number of subshells equal to your processor cores *unless* watchtop is set to a positive value to limit 
+the number of cores.  
+
+I personally use the "arthur_modified" rofi theme included here which has some small tweaks.
+
+`YTDLP_COOKIES` is used to control which browser `yt-dlp` [gets cookies from](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp).
+
+`MARK_AGE` determines whether the visual marking of video age is displayed, change to anything but "TRUE" to turn off.
  
- ### Notes
+### Notes
+ 
+ * Nearly all channel data and views are cached to optimize speed when you're actually watching videos. So you will not see "watched" changes until it rebuilds that cached view after you quit the program.  Likewise, when you change a variable such as `MARK_AGE`, you *must* either use the refresh command, or delete `time_data.txt` and `grouped_data.txt` in the cache directory in order to see the change.  
+ 
+ * When the tool plays a video, it attempts to automatically use xclip and/or copyq to put the video URL in the clipboard, should you want to share it, etc.
  
  * Ensure that the CSV file used during the import operation is formatted properly, each line consisting of channel id, url, channel name and without a comma at 
  the end. A sample is enclosed. This is the same export format that FreeTube, for example, uses for CSV export. You can also manually find channelID using a 
  tool like the one at  [https://www.streamweasels.com/%20tools/youtube-channel-id-and-%20user-id-convertor/](https://www.streamweasels.com/%20tools/youtube-channel-id-and-%20user-id-convertor/)
  
- * The following variables are set at the top of the script
-    - MAX_CHANNEL_AGE - for grouped, any channel without a video newer than that will not be shown. Default 6 months.
-    - MAX_GROUPED_VIDS - for grouped, max per channel, default 10.
-    - ROFI_THEME - the theme you want to use. The modified version of "arthur" I use is enclosed.
- 
  *  This script is intended for personal use and not to be utilized for streaming without permission from the respective YouTube creators. Ensure you comply with 
  the terms and conditions from YouTube.
  
+ * It will 
+ 
 ### TODO
 
-document copying to clipboards
 showing what it does
 TODO - I mean, it's spaghetti code. It works, it is nowhere near optimized, and is probably got issues in some way  
-TODO - sort grouped by channel age  
-TODO - set up variables in .env or something  
+TODO - sort grouped by channel age (this is REALLY kicking my ass.)
 TODO - varying video sizes defined  
-TODO - set up better cookie import versions.  
 TODO - filter *EXCLUDE* terms
-TODO - show "viewed" in grouped by subscription as well
+

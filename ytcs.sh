@@ -11,14 +11,16 @@
 #
 ##############################################################################
 
-SCRIPTDIR="$( cd "$(dirname "$0")" ; pwd -P )"
+SCRIPT_DIR="$( cd "$(dirname "$0")" ; pwd -P )"
 watchtop=""
-if [ -f "${SCRIPT_DIR}/ytcs.env" ]
-    source "${SCRIPT_DIR}/maubot_vars.env"
+if [ -f "${SCRIPT_DIR}/ytcs.env" ];then
+    source "${SCRIPT_DIR}/ytcs.env"
 else
-    export ROFI_THEME="arthur_modified"
+    export ROFI_THEME="arthur"
     export MAX_CHANNEL_AGE=182
     export MAX_GROUPED_VIDS=10
+    export YTDLP_COOKIES="firefox"
+    export MARK_AGE="TRUE"
 fi
 
 
@@ -103,8 +105,8 @@ import_subscriptions()
         watchcount=$(( watchcount + 1 ))  
         (
         id=$(echo "$line"|awk -F ',' '{print $1}')
-        url=$(echo "$line"|awk -F ',' '{print $2}')
-        name=$(echo "$line"|awk -F ',' '{print $3}')
+        #url=$(echo "$line"|awk -F ',' '{print $2}')
+        #name=$(echo "$line"|awk -F ',' '{print $3}')
         if [[ "$id" != "Channel Id" ]];then
             wget_string=$(printf "%s -q \"%s%s\" -O %s/%s" "${wget_bin}" "https://www.youtube.com/feeds/videos.xml?channel_id=" "${id}" "${CACHEDIR}" "${id}") 
             eval "${wget_string}"
@@ -238,11 +240,11 @@ add_human_date() {
 }
 
 mark_if_watched() {
-    local data="${@}"
+    local data="$@"
     if [ -f "${CACHEDIR}"/watched_files.txt ];then
         # Filter and prepend § Exit
         {
-            echo "§ Exiter"
+            echo "§ Exit"
             while IFS= read -r line; do
                 [[ "${line}" == "" ]] && continue
                 if [[ $line == *"📺"* ]];then
@@ -280,52 +282,54 @@ mark_age() {
     five_weeks_ago=$(date -d '35 days ago' +%s)
     six_weeks_ago=$(date -d '42 days ago' +%s)
     seven_weeks_ago=$(date -d '49 days ago' +%s)
-    eight_weeks_ago=$(date -d '56 days ago' +%s)
-    nine_weeks_ago=$(date -d '63 days ago' +%s)
-    ten_weeks_ago=$(date -d '70 days ago' +%s)
+    #eight_weeks_ago=$(date -d '56 days ago' +%s)
+    #nine_weeks_ago=$(date -d '63 days ago' +%s)
+    #ten_weeks_ago=$(date -d '70 days ago' +%s)
 
     while IFS= read -r line; do
-        # Extract the ISO date from field 2 (trimmed)
-        if [[ $line == *📺* ]];then
-            days_ago=$(echo "$line" | awk -F '-' '{print $2}' | xargs)
-            date_string=$(days_to_iso8601 $days_ago)
-            line_ts=$(date -d "$date_string" +%s 2>/dev/null)
-        else
-            date_string=$(echo "$line" | awk -F '|' '{print $2}' | xargs)
-            line_ts=$(date -d "$date_string" +%s 2>/dev/null)
-        fi
-        if [[ -z "$line_ts" ]]; then
-            echo "$line"
-            continue
-        fi
+        if [ "${MARK_AGE}" == "TRUE" ];then
+            # Extract the ISO date from field 2 (trimmed)
+            if [[ $line == *📺* ]];then
+                days_ago=$(echo "$line" | awk -F '-' '{print $2}' | xargs)
+                date_string=$(days_to_iso8601 $days_ago)
+                line_ts=$(date -d "$date_string" +%s 2>/dev/null)
+            else
+                date_string=$(echo "$line" | awk -F '|' '{print $2}' | xargs)
+                line_ts=$(date -d "$date_string" +%s 2>/dev/null)
+            fi
+            if [[ -z "$line_ts" ]]; then
+                echo "$line"
+                continue
+            fi
 
-        if (( line_ts < seven_weeks_ago )); then
-            echo "▁ $line"
-        elif (( line_ts < six_weeks_ago )); then
-            echo "▂ $line"
-        elif (( line_ts < five_weeks_ago )); then
-            echo "▃ $line"
-        elif (( line_ts < four_weeks_ago )); then
-            echo "▄ $line"
-        elif (( line_ts < three_weeks_ago )); then
-            echo "▅ $line"
-        elif (( line_ts < two_weeks_ago )); then
-            echo "▆ $line"
-        elif (( line_ts < one_week_ago )); then
-            echo "▇ $line"
+            if (( line_ts < seven_weeks_ago )); then
+                echo "▁ $line"
+            elif (( line_ts < six_weeks_ago )); then
+                echo "▂ $line"
+            elif (( line_ts < five_weeks_ago )); then
+                echo "▃ $line"
+            elif (( line_ts < four_weeks_ago )); then
+                echo "▄ $line"
+            elif (( line_ts < three_weeks_ago )); then
+                echo "▅ $line"
+            elif (( line_ts < two_weeks_ago )); then
+                echo "▆ $line"
+            elif (( line_ts < one_week_ago )); then
+                echo "▇ $line"
+            else
+                echo "█ $line"
+            fi
         else
-            echo "█ $line"
+            echo " $line"
         fi
-
     done  
 }
-
 
 parse_subscriptions(){
     trap '' PIPE
     allfiledata=""
     if [ "$1" = "g" ];then
-        # this is per subscription, latest 5 
+        # this is per subscription, latest MAX_GROUPED_VIDS 
         TEMPFILE=$(mktemp)
         shopt -s nullglob  # avoids looping if no match
         watchcount=0
@@ -365,7 +369,7 @@ parse_subscriptions(){
             [[ "$(basename "$file")" == "time_data.txt" ]] && continue
             if [ -f "$file" ];then
                 chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
-                chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
+                #chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
                 thisfiledata=$(sed -n '/<entry>/,$p' "$file" | grep  -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | awk -F '|' '{print $2 " | " $3 " | " $1}' | sed "s/^/\[$chantitle\] /")
                 allfiledata="$allfiledata\\n$thisfiledata"
             else
@@ -392,25 +396,20 @@ choose_subscription () {
         fi
         watchcount=$(( watchcount + 1 ))  
         (
-        #thischanneldata=""
         id=$(basename ${file}) 
         updated=$(grep -m 2 "<updated>" "$file" | tail -1 | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' )
         human_date=$(date -d "$updated" +"%d %B")
         title=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' )
         if [ -n "$id" ];then
             printf "%s (%s)\t\t\t\t|%s|%s\n" "$title" "$human_date" "$id" "$updated" >> "${TEMPFILE}"
-            #thischanneldata=$(printf "%s \t\t\t\t|%s|%s" "$title" "$id" "$updated")
-            #allchanneldata=$(echo -e "$allchanneldata\\n$thischanneldata")
-            #thischanneldata=""
         fi
         ) &
     done
     # the awk omits those who don't have an updated date (and are therefore ill-formed)
-    #allchanneldata=$(cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""')
-    rezult=$(printf "1-By name A-Z\n2-By last updated\n3-By name Z-a\n" | rofi -i -dmenu -p "Sort how?" -theme "${ROFI_THEME}")
+    rezult=$(printf "1-By last updated\n2-By name A-Z\n3-By name Z-a\n" | rofi -i -dmenu -p "Sort how?" -theme "${ROFI_THEME}")
     case $rezult in 
-        1-*) allchanneldata=$({ echo "§ Exit"; cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""' | sort -t '|' -k 1; });;
-        2-*) allchanneldata=$({ echo "§ Exit"; cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""' | sort -r -t '|' -k 3; });;
+        1-*) allchanneldata=$({ echo "§ Exit"; cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""' | sort -r -t '|' -k 3; });;
+        2-*) allchanneldata=$({ echo "§ Exit"; cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""' | sort -t '|' -k 1; });;
         3-*) allchanneldata=$({ echo "§ Exit"; cat "${TEMPFILE}" | awk -F'|' 'NF && $3 != ""' | sort -r -t '|' -k 1; });;
     esac
     rm "${TEMPFILE}"
@@ -422,7 +421,7 @@ choose_subscription () {
             loop=yes
             while [ "$loop" == "yes" ];do 
                 # ADD IN WATCHED CHECK HERE
-                mark_if_watched "$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" \
+                ChosenString=$(mark_if_watched "$(sed -n '/<entry>/,$p' "$CACHEDIR"/"$ChosenChannel" \
                     | grep -e "<yt:videoId>" -e "<title>" -e "<published>" \
                     | awk -F '>' '{print $2}' \
                     | awk -F '<' '{print $1}' \
@@ -432,13 +431,13 @@ choose_subscription () {
                     | sed 's/&amp;/and/g' \
                     | head -25 \
                     | awk -F '|' '{printf "%s | %s | %s\n", $2, $3, $1}'
-                )" | rofi -i -dmenu -p "Which VIDEO?" -theme "${ROFI_THEME}"
+                )" | rofi -i -dmenu -p "Which VIDEO?" -theme "${ROFI_THEME}")
                 if [ -n "$ChosenString" ];then
                     if [[ "$ChosenString" == "#"* ]] || [[ "$ChosenString" == §* ]] || [[ "$ChosenString" == "" ]] ;then
                         #Exit condition
                         loop=""
                     else
-                        VideoId=$(echo "$ChosenString" | awk -F '|' '{print $3}'| sed -e 's/^[ \t]*//')
+                        VideoId=$(echo "$ChosenString" | awk -F '|' '{print $4}'| sed -e 's/^[ \t]*//')
                         play_video "$VideoId"
                     fi
                 else
@@ -522,16 +521,13 @@ play_video () {
     
     # copy url to clipboards
     to_clipboards "https://www.youtube.com/watch?v=${TheVideo}"
-    
-    # Okay, so cookie variables here.
-    # https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp
  
     video_url="https://www.youtube.com/watch?v=${TheVideo}"
     # Run yt-dlp and mpv in a monitored pipeline
     { "${ytube_bin}" "$video_url" \
         -o - \
         --ignore-errors \
-        --cookies-from-browser firefox \
+        --cookies-from-browser "${YTDLP_COOKIES}" \
         --no-check-certificate \
         --no-playlist \
         --mark-watched \
