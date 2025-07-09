@@ -25,9 +25,19 @@ This tool can be installed by cloning the repository to your local machine and t
 
 ## Usage
 
-There are several commands available with this script: 
+### Playing a single video
 
-ytcs.sh [--loud] [--help] [--import FILENAME] [--refresh] [--subscription|--grouped|--time]"
+It is possible to simply use this as a way to pipe a YouTube url to mpv. It will also include that in your "seen" videos. Simply 
+
+`ytcs.sh [url]` 
+
+where the `url` is either the full url to the video, or the shortened `https://youtu.be/` format.
+
+### Browsing Subscriptions.
+
+There are several commands available with this script when used to *browse* videos:  
+
+`ytcs.sh [--loud] [--help] [--import FILENAME] [--refresh] [--subscription|--grouped|--time]`
 
 You may use any combination of these:
 
@@ -71,7 +81,7 @@ Keep in mind that since it's powered by `rofi` or `fzf`, you can search among th
 ./ytcs.sh --subscription 
 ```
 
-### Configuration
+## Configuration
 
 Rename the file `ytcs.env.example` to `ytcs.env` and edit it. The example file has the defaults:
 

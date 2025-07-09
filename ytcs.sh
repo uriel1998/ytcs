@@ -552,18 +552,48 @@ mark_if_not_seen() {
 }
 
 
+extract_youtube_id() {
+  local url="$1"
+  local id
+
+  # Try to extract from full URL (watch?v=...)
+  if [[ "$url" =~ (v=|\/)([a-zA-Z0-9_-]{11})([&?]|$) ]]; then
+    id="${BASH_REMATCH[2]}"
+    echo "$id"
+    return 0
+  fi
+
+  echo "Invalid or unsupported URL format" >&2
+  return 1
+}
+
+get_webpage_title() {
+  local url="$1"
+
+  curl -Ls "$url" 2>/dev/null | \
+    grep -i -o '<title[^>]*>.*</title>' | \
+    sed -e 's/<title[^>]*>//I' -e 's:</title>::I' | \
+    head -n 1
+}
+
 play_video () {
-    TheVideo="${1}"
-    export TheTitle=""
-    export TheTitle=$(echo "${2}" | cut -c 4- | sed 's/👀//g' )
+    # see if URL is directly passed through
+    if [[ $1 == http*  ]];then
+        video_url="${1}"
+        TheVideo=$(extract_youtube_id "${video_url}")
+        TheTitle=$(get_webpage_title "${video_url}")
+    else
+        TheVideo="${1}"
+        export TheTitle=""
+        export TheTitle=$(echo "${2}" | cut -c 4- | sed 's/👀//g' )
+        video_url="https://www.youtube.com/watch?v=${TheVideo}"
+    fi
+    # copy url to clipboards
+    to_clipboards "${video_url}"
     if [ -f $(which notify-send) ];then
         loud "Loading video ${TheTitle}..."
     fi
-    
-    # copy url to clipboards
-    to_clipboards "https://www.youtube.com/watch?v=${TheVideo}"
  
-    video_url="https://www.youtube.com/watch?v=${TheVideo}"
     # Run yt-dlp and mpv in a monitored pipeline
     { "${ytube_bin}" "$video_url" \
         -o - \
@@ -603,6 +633,10 @@ while [ $# -gt 0 ]; do
 # You have to have the shift or else it will keep looping...
     option="$1"
     case $option in
+        https*) play_video "${1}"
+                shift
+                exit
+                ;;
         --cli)     export CLIMODE=1
                     shift
                     ;;        
