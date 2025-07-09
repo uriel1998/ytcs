@@ -27,7 +27,7 @@ This tool can be installed by cloning the repository to your local machine and t
 
 ### Playing a single video
 
-It is possible to simply use this as a way to pipe a YouTube url to mpv. It will also include that in your "seen" videos. Simply 
+It is possible to simply use this as a way to pipe a YouTube url to `mpv`. It will also include that in your "seen" videos. Simply 
 
 `ytcs.sh [url]` 
 
