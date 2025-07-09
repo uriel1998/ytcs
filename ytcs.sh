@@ -178,24 +178,6 @@ is_file_newer_than_any_xml() {
     return 1  # file is not newer than any .xml
 }
 
-is_file_newer() {
-    local file1="$1"
-    local file2="$2"
-
-    # Make sure both directory and file exist
-    [[ ! -f "$file1" || ! -f "$file2" ]] && return 1
-
-    local file_ts
-    local file2_ts
-    file1_ts=$(stat -c %Y "$file1")
-    file2_ts=$(stat -c %Y "$file2")
-    if (( file1_ts > file2_ts )); then
-        return 0  # the file is newer than at least one .xml
-    else
-        return 1  # file is not newer than any .xml
-    fi
-}
-
 most_recent_age() {
     local data="$1"
     local latest_ts=0
@@ -367,11 +349,6 @@ parse_subscriptions(){
         done
         wait
         allfiledata=$(cat ${TEMPFILE})
-        
-        
-        # TODO
-        
-        # so can do mark if watched with the PLAYING aspect and leave it out of here, making it more responsive overall, duh.
         mark_if_watched "${allfiledata}"
         rm "${TEMPFILE}"   
     else
@@ -551,6 +528,30 @@ to_clipboards (){
     fi
 }
 
+
+mark_if_not_seen() {
+  local search="${1}"
+  local file="${2}"
+  local tmpfile="$(mktemp)"
+
+  awk -F'|' -v OFS='|' -v search="$search" '
+  {
+    gsub(/^[ \t]+|[ \t]+$/, "", $4);  # Trim whitespace from 4th field
+    if ($4 == search) {
+      if ($1 ~ /👀/) {
+        print  # Already marked
+      } else {
+        # Add 👀 after the last matching ANSI bar character
+        sub(/([▇█▆▅▄▃▂▁])/, "& 👀", $1)
+        print
+      }
+    } else {
+      print
+    }
+  }' "$file" > "$tmpfile" && mv "$tmpfile" "$file"
+}
+
+
 play_video () {
     TheVideo="${1}"
     export TheTitle=""
@@ -583,6 +584,8 @@ play_video () {
     if [ "$count" == "0" ];then
         loud "[info] Marking watched"
         echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
+        mark_if_not_seen "${TheVideo}" "${CACHEDIR}/grouped_data.txt"
+        mark_if_not_seen "${TheVideo}" "${CACHEDIR}/time_data.txt"
     else
         loud "[info] Already watched"
     fi    
@@ -624,20 +627,10 @@ while [ $# -gt 0 ]; do
                     ;;
         --grouped|-g) 
             choose_video g 
-            if is_file_newer "${CACHEDIR}/watched_files.txt" "${CACHEDIR}/grouped_data.txt"; then
-                loud "[info] Refreshing grouped data on exit"
-                parse_subscriptions g 2>/dev/null > "${CACHEDIR}/grouped_data.txt"
-                loud "[info] Finished refreshing grouped data on exit"
-            fi
             exit
             ;;
         --time|--chronological|-t|-c) 
             choose_video c
-            if is_file_newer "${CACHEDIR}/watched_files.txt" "${CACHEDIR}/time_data.txt"; then
-                loud "[info] Refreshing chronological data on exit"
-                parse_subscriptions 2>/dev/null > "${CACHEDIR}/time_data.txt"
-                loud "[info] Finished refreshing chronological data on exit"
-            fi
             exit
             ;;
         --subscription|-s) 

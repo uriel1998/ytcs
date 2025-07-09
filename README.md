@@ -118,4 +118,5 @@ TODO - sort grouped by channel age (this is REALLY kicking my ass.)
 TODO - filter *EXCLUDE* terms (new feature)
 TODO - locks on data files 
 TODO - a way to update in the background and then swap the cache out once it's rebuilt in the background (that'd be FAB)
-TODO - or to update similarly to how I do with the subscription, but that's rebuilt on the fly d/t being smaller. But maybe explicitly moving the analysis strings out of the cache creation portion and into the display portion?
+TODO - mark as watched needs to be done as a db rebuild simply because that *IS* how long it takes.
+TODO - Or just alter the cache file ITSELF.
