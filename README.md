@@ -116,7 +116,3 @@ TODO - Demo
 TODO - I mean, it's spaghetti code. It works, it is nowhere near optimized, and is probably got issues in some way  
 TODO - sort grouped by channel age (this is REALLY kicking my ass.) 
 TODO - filter *EXCLUDE* terms (new feature)
-TODO - locks on data files 
-TODO - a way to update in the background and then swap the cache out once it's rebuilt in the background (that'd be FAB)
-TODO - mark as watched needs to be done as a db rebuild simply because that *IS* how long it takes.
-TODO - Or just alter the cache file ITSELF.
