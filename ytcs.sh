@@ -121,7 +121,7 @@ import_subscriptions()
             eval "${wget_string}"
         fi
         ) &
-    done < "$SUBSCRIPTIONFILE"
+    done < "${SUBSCRIPTIONFILE}"
     exit
 }
 
@@ -652,7 +652,7 @@ while [ $# -gt 0 ]; do
         --import|-i)   shift
                     if [ -f "${1}" ];then 
                         InputFile="${1}"
-                        import_subscriptions "$InputFile"
+                        import_subscriptions "${InputFile}"
                     else
                         loud "Import must have a csv inputfile following."
                         exit 96
