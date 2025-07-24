@@ -22,8 +22,7 @@ GEOMETRY2="1366x768"
 CLIMODE=0
 watchtop=""
 
-SCRIPT_DIR="$( cd "$(dirname "$0")" ; pwd -P )"
-
+SCRIPT_DIR="$( cd "$(dirname $(readlink -f "${0}"))" ; pwd -P )"
 
 # Overwrite defaults via env
 if [ -f "${SCRIPT_DIR}/ytcs.env" ];then
