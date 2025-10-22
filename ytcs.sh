@@ -601,7 +601,6 @@ play_video () {
         --no-check-certificate \
         --no-playlist \
         --mark-watched \
-        --extractor-args "youtube:player-client=tv_embedded" \
         --continue \
         | "${mpv_bin}" --title=\""${TheTitle}"\" --geometry=${GEOMETRY1} --autofit=${GEOMETRY2} - --force-seekable=yes; 
     } || {
