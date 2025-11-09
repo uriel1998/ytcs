@@ -27,7 +27,7 @@ hide-on-unfocus: false;
 * {
     foreground:  #ffeedd;
     backlight:   #ccffeedd;
-    background-color:  transparent;
+    background-color: rgba(0, 0, 0, 0);    /* transparent  */
     transparency: "screenshot";        
     dark: #1c1c1c;
     // Black
@@ -78,8 +78,7 @@ hide-on-unfocus: false;
     border:  0px;
     border-radius: 10px;
     color: @foreground;
-    background-color: @transparent;
-
+	background-color: rgba(0, 0, 0, 0.6);    /* semi-transparent black */
     spacing: 0;
     children:  [mainbox];
     orientation: horizontal;

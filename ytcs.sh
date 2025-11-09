@@ -598,6 +598,7 @@ play_video () {
         -o - \
         --ignore-errors \
         --cookies-from-browser "${YTDLP_COOKIES}" \
+        --extractor-args "youtube:player-client=tv_embedded,mweb,tv,default" \
         --no-check-certificate \
         --no-playlist \
         --mark-watched \
