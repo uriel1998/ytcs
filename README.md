@@ -97,6 +97,11 @@ export GEOMETRY1="1366x768+50%+50%"
 export GEOMETRY2="1366x768"
 ```
 
+
+`export YTPOT_BASEURL="youtubepot-bgutilhttp:base_url=http://127.0.0.1:8080"` is used ONLY 
+if you have the BGUtil POTS provider on a non-default host or port as described [in its documentation](https://github.com/Brainicism/bgutil-ytdlp-pot-provider?tab=readme-ov-file#usage). 
+
+
 The value `watchtop` is used for process control; while parsing data, `ytcs` will attempt to use
 a number of subshells equal to your processor cores *unless* watchtop is set to a positive value to limit 
 the number of cores.  
