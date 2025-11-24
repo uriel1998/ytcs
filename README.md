@@ -9,6 +9,8 @@ The script presents the subscriptions in a rofi or fzf menu, making it easy to n
 [![Video of ytcs in action](https://img.youtube.com/vi/-9A_c_ztEbc/0.jpg)](https://www.youtube.com/watch?v=-9A_c_ztEbc)
  
  
+Updated to include https://github.com/Brainicism/bgutil-ytdlp-pot-provider
+ 
 ## Prerequisites
 
 The script requires the following programs to be installed: 

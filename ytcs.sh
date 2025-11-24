@@ -593,14 +593,14 @@ play_video () {
         loud "Loading video ${TheTitle}..."
     fi
 	if [ "$YTPOT_BASEURL" != "" ];then
-		YTPOT_BASEURL="--extractor-args $YTPOT_BASEURL "
+		YTPOT_BASEURL_STRING="--extractor-args $YTPOT_BASEURL "
 	fi
  
     # Run yt-dlp and mpv in a monitored pipeline
     { "${ytube_bin}" "$video_url" \
         -o - \
         --ignore-errors \
-        --cookies-from-browser "${YTDLP_COOKIES}" $YTPOT_BASEURL \
+        --cookies-from-browser "${YTDLP_COOKIES}" $YTPOT_BASEURL_STRING \
         --extractor-args "youtube:player-client=tv_embedded,mweb,tv,default" \
         --no-check-certificate \
         --no-playlist \
