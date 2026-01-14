@@ -599,7 +599,9 @@ play_video () {
     # Run yt-dlp and mpv in a monitored pipeline
     { "${ytube_bin}" "$video_url" \
         -o - \
-        --ignore-errors \
+		--remote-components ejs:github \
+		--impersonate chrome \
+		--ignore-errors \
         --cookies-from-browser "${YTDLP_COOKIES}" $YTPOT_BASEURL_STRING \
         --extractor-args "youtube:player-client=tv_embedded,mweb,tv,default" \
         --no-check-certificate \
