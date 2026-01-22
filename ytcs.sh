@@ -603,7 +603,7 @@ play_video () {
 		--impersonate chrome \
 		--ignore-errors \
         --cookies-from-browser "${YTDLP_COOKIES}" $YTPOT_BASEURL_STRING \
-        --extractor-args "youtube:player-client=tv_embedded,mweb,tv,default" \
+        --extractor-args "youtube:player-client=tv_embedded,mweb,tv,default,-web_safari" \
         --no-check-certificate \
         --no-playlist \
         --mark-watched \
