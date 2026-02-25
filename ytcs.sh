@@ -336,7 +336,18 @@ parse_subscriptions(){
             if [ -f "$file" ];then
                 chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
                 chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
-                thischanneldata=$(sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -${MAX_GROUPED_VIDS} | awk -F '|' '{print $2 " | " $3 " |" $1}')
+                if [ -f $(which xmlstarlet) ];then 
+					thischanneldata=$(xmlstarlet sel -T \
+						-N 'atom=http://www.w3.org/2005/Atom' \
+						-N 'yt=http://www.youtube.com/xml/schemas/2015' \
+						-t \
+						-m '//atom:entry' \
+						-v 'concat(translate(normalize-space(atom:title),"|",""), " | ", normalize-space(atom:published), " |", normalize-space(yt:videoId))' \
+						-n "${file}" \
+						| awk -v max=${MAX_GROUPED_VIDS} 'NR<=max { gsub(/"/,"‘"); gsub(/&/,"and"); print }')
+				else
+					thischanneldata=$(sed -n '/<entry>/,$p' "$file" | grep -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | head -${MAX_GROUPED_VIDS} | awk -F '|' '{print $2 " | " $3 " |" $1}')
+				fi
                 thischannelage=$(most_recent_age "$thischanneldata")
                 thischanneltitle=$(printf "§ 📺 %s - %s" "$chantitle" "$thischannelage")
                 if [ $thischannelage -le $MAX_CHANNEL_AGE ];then
@@ -360,7 +371,20 @@ parse_subscriptions(){
             if [ -f "$file" ];then
                 chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
                 #chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
-                thisfiledata=$(sed -n '/<entry>/,$p' "$file" | grep  -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | awk -F '|' '{print $2 " | " $3 " | " $1}' | sed "s/^/\[$chantitle\] /")
+				if [ -f $(which xmlstarlet) ];then
+				thisfiledata=$(xmlstarlet sel -T \
+					  -N 'atom=http://www.w3.org/2005/Atom' \
+					  -N 'yt=http://www.youtube.com/xml/schemas/2015' \
+					  -t \
+					  -m '//atom:entry' \
+					  -v 'concat(translate(normalize-space(atom:title),"|",""), " | ", normalize-space(atom:published), " | ", normalize-space(yt:videoId))' \
+					  -n "${file}" \
+					| awk '{ gsub(/"/,"‘"); gsub(/&/,"and"); print }' \
+					| sed "s/^/\[${chantitle}\] /"
+				 )
+				else
+					thisfiledata=$(sed -n '/<entry>/,$p' "$file" | grep  -e "<yt:videoId>" -e "<title>" -e "<published>" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}' | sed 's/|//g'| sed 'N;N;s/\n/|/g' | sed 's/&quot;/‘/g' | sed 's/&amp;/and/g' | awk -F '|' '{print $2 " | " $3 " | " $1}' | sed "s/^/\[$chantitle\] /")
+				fi
                 allfiledata="$allfiledata\\n$thisfiledata"
             else
                 echo "Error in reading chronological list!"
