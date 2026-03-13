@@ -6,6 +6,8 @@ Firefox, and allowing the viewing of videos.
 
 The script presents the subscriptions in a rofi or fzf menu, making it easy to navigate and select the videos you want to watch. 
 
+This is the branch that supports rofi; main development is focused on terminal handling with fzf
+
 [![Video of ytcs in action](https://img.youtube.com/vi/-9A_c_ztEbc/0.jpg)](https://www.youtube.com/watch?v=-9A_c_ztEbc)
  
  
