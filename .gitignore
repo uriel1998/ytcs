@@ -1,17 +1,34 @@
-# reference, old shit
+# Project reference / local working files
 1_reference/
+.codex
+.codex/
+cache/
+subscriptions.csv
+subscriptionsff.csv
 ytcs.env
 .env
 
 # macOS Junks
 .DS_Store
+.AppleDouble
+.LSOverride
 
 # VSCode Junks
 .vscode
 .vscode/*
+.idea/
+*.swp
+*.swo
+*~
 
 # Microsoft Office Junks
 ~$*.*
+
+# Logs / temp files
+*.tmp
+*.temp
+*.bak
+*.orig
 
 # C/C++ Junks
 # Prerequisites
