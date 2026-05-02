@@ -113,13 +113,14 @@ fzf_video_select() {
     fi
 
     fzf \
+        --multi \
         --prompt="${prompt}> " \
         --height="${selector_height}" \
         --layout=reverse \
         --border \
         --with-nth=1,2 \
         --delimiter='|' \
-        --header="$(selector_help)" \
+        --header="Tab queue | Enter play queue | $(selector_help)" \
         --preview="${SCRIPT_PATH} --preview-item {}" \
         --preview-window="${preview_window}"
 }
@@ -1208,14 +1209,11 @@ choose_video () {
         if [ "${ChosenString}" == "Error in reading chronological list!" ];then
             exit 97
         fi
-        if [[ $ChosenString =~ ^§ ]] || [[ "$ChosenString" == "" ]];then
+        if [ -z "${ChosenString}" ];then
             loop="no"
         else
-            if [ -n "$ChosenString" ];then
-                VideoId=$(echo "$ChosenString" | awk -F '|' '{print $4}'| sed -e 's/^[ \t]*//')
-                VideoTitle=$(echo "$ChosenString" | awk -F '|' '{print $1}')
-                echo "${VideoId}"
-                play_video "${VideoId}" "${VideoTitle}"
+            if queue_selected_videos "${ChosenString}"; then
+                :
             else
                 loop="no"
             fi
@@ -1237,6 +1235,29 @@ to_clipboards (){
         echo "${input}" | tr -d '/n' | /usr/bin/copyq write 0  -
         /usr/bin/copyq select 0
     fi
+}
+
+queue_selected_videos() {
+##############################################################################
+# queue_selected_videos plays each selected fzf video entry in order
+##############################################################################
+    local selections="$1"
+    local line VideoId VideoTitle queued_any=""
+
+    while IFS= read -r line; do
+        [ -z "${line}" ] && continue
+        if [[ "${line}" == "#"* ]] || [[ "${line}" == §* ]];then
+            continue
+        fi
+
+        queued_any="yes"
+        VideoId=$(echo "$line" | awk -F '|' '{print $4}' | sed -e 's/^[ \t]*//')
+        VideoTitle=$(echo "$line" | awk -F '|' '{print $1}')
+        echo "${VideoId}"
+        play_video "${VideoId}" "${VideoTitle}"
+    done <<< "${selections}"
+
+    [ "${queued_any}" == "yes" ]
 }
 
 
