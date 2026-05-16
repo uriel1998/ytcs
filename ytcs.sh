@@ -21,6 +21,7 @@ GEOMETRY2="1366x768"
 CLIMODE=0
 KITTYMODE=0
 REFRESHED_THIS_RUN=0
+NO_SHORTS=0
 watchtop=""
 
 SCRIPT_DIR="$( cd "$(dirname $(readlink -f "${0}"))" ; pwd -P )"
@@ -302,6 +303,7 @@ interactive_menu() {
 --loud|Extra feedback on stderr
 --cli|CLI mode
 --refresh|Refresh cached subscription data
+--noshorts|Exclude Shorts from video listings
 --subscription|Browse by subscription
 --grouped|Browse grouped by subscription
 --time|Browse in chronological order
@@ -458,7 +460,7 @@ display_help(){
     cat <<'EOF'
 Usage:
   ytcs.sh [URL]
-  ytcs.sh [--loud] [--cli] [--kitty] [--refresh]
+  ytcs.sh [--loud] [--cli] [--kitty] [--refresh] [--noshorts]
           [--import FILE] [--addsub URL]
           [--subscription | --grouped | --time]
 
@@ -477,6 +479,9 @@ Options:
 
   --refresh, -r
       Refresh all cached subscription feeds and rebuild grouped/time caches.
+
+  --noshorts, -n
+      Exclude YouTube Shorts from video listing views.
 
   --import, -i FILE
       Import subscriptions from a CSV file in channel-id export format.
@@ -1018,6 +1023,20 @@ extract_feed_entries() {
     fi
 }
 
+filter_fzf_input() {
+##############################################################################
+# filter_fzf_input removes rendered short rows before sending them to fzf
+##############################################################################
+    local data="$1"
+
+    if [ "${NO_SHORTS}" != "1" ];then
+        printf "%s\n" "${data}"
+        return 0
+    fi
+
+    printf "%s\n" "${data}" | grep -Fv '[s]'
+}
+
 build_time_channel_cache() {
 ##############################################################################
 # build_time_channel_cache stores parsed chronological data for one channel
@@ -1163,7 +1182,7 @@ choose_subscription () {
         if [ -f "$CACHEDIR"/"$ChosenChannel" ];then
             loop=yes
             while [ "$loop" == "yes" ];do
-                ChosenString=$(mark_if_watched "$(extract_feed_entries "$CACHEDIR"/"$ChosenChannel" 25 | convert_feed_dates_to_epoch)" | fzf_video_select "Which VIDEO?")
+                ChosenString=$(filter_fzf_input "$(mark_if_watched "$(extract_feed_entries "$CACHEDIR"/"$ChosenChannel" 25 | convert_feed_dates_to_epoch)")" | fzf_video_select "Which VIDEO?")
                 if [ -n "$ChosenString" ];then
                     if [[ "$ChosenString" == "#"* ]] || [[ "$ChosenString" == §* ]] || [[ "$ChosenString" == "" ]] ;then
                         #Exit condition
@@ -1206,7 +1225,7 @@ choose_video () {
             feeddata=$(<"${CACHEDIR}/time_data.txt")
         fi
         # I guess it could just read from a file here, but... ah well.
-        ChosenString=$(echo "$feeddata" | fzf_video_select "Which video?")
+        ChosenString=$(filter_fzf_input "$feeddata" | fzf_video_select "Which video?")
         if [ "${ChosenString}" == "Error in reading subscriptions list!" ];then
             exit 98
         fi
@@ -1397,6 +1416,10 @@ while [ $# -gt 0 ]; do
                     shift
                     ;;
         --refresh|-r)  refresh_subscriptions
+                    shift
+                    ;;
+        --noshorts|-n)
+                    export NO_SHORTS=1
                     shift
                     ;;
         --help|-h)     display_help
