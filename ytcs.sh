@@ -544,7 +544,40 @@ fetch_subscription_feed() {
         return 1
     fi
 
+    if ! is_valid_feed_xml "${temp_file}" "${channel_id}"; then
+        loud "[warn] Discarding invalid feed response for ${channel_id}; preserving existing cache"
+        rm -f "${temp_file}"
+        return 1
+    fi
+
     mv "${temp_file}" "${output_file}"
+    return 0
+}
+
+is_valid_feed_xml() {
+##############################################################################
+# is_valid_feed_xml checks whether a downloaded file looks like a YouTube feed
+##############################################################################
+    local file="$1"
+    local channel_id="$2"
+
+    [ -s "${file}" ] || return 1
+
+    if [ -n "${xmlstarlet_bin}" ];then
+        "${xmlstarlet_bin}" val -q "${file}" >/dev/null 2>&1 || return 1
+        "${xmlstarlet_bin}" sel -T \
+            -N 'atom=http://www.w3.org/2005/Atom' \
+            -N 'yt=http://www.youtube.com/xml/schemas/2015' \
+            -t -v 'count(/atom:feed)' -o '|' \
+               -v 'count(/atom:feed/atom:link[@rel="self"][contains(@href, "channel_id='"${channel_id}"'")])' -o '|' \
+               -v 'count(/atom:feed/atom:entry/yt:channelId[text()="'${channel_id}'"])' \
+            -n "${file}" 2>/dev/null | awk -F'|' '$1 == 1 && $2 >= 1 && $3 >= 1 { ok=1 } END { exit(ok ? 0 : 1) }' || return 1
+    else
+        grep -q "<feed" "${file}" || return 1
+        grep -q "channel_id=${channel_id}" "${file}" || return 1
+        grep -q "<yt:channelId>${channel_id}</yt:channelId>" "${file}" || return 1
+    fi
+
     return 0
 }
 
