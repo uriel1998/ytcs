@@ -1315,8 +1315,8 @@ to_clipboards (){
         echo "${input}" | xclip -i -selection clipboard -r
     fi
     if [ -f $(which copyq) ];then
-        echo "${input}" | tr -d '/n' | /usr/bin/copyq write 0  -
-        /usr/bin/copyq select 0
+        echo "${input}" | tr -d '/n' | copyq write 0  -
+        copyq select 0
     fi
 }
 
@@ -1336,7 +1336,6 @@ queue_selected_videos() {
         queued_any="yes"
         VideoId=$(echo "$line" | awk -F '|' '{print $4}' | sed -e 's/^[ \t]*//')
         VideoTitle=$(echo "$line" | awk -F '|' '{print $1}')
-        echo "${VideoId}"
         play_video "${VideoId}" "${VideoTitle}"
     done <<< "${selections}"
 
@@ -1348,6 +1347,11 @@ mark_if_not_seen() {
   local search="${1}"
   local file="${2}"
   local tmpfile="$(mktemp)"
+
+  if [ ! -f "${file}" ];then
+    rm -f "${tmpfile}"
+    return 0
+  fi
 
   awk -F'|' -v OFS='|' -v search="$search" '
   {
@@ -1392,6 +1396,15 @@ get_webpage_title() {
 }
 
 play_video () {
+	
+	local quiet=""
+	local reallyquiet=""
+	
+	if [ "$LOUD" == "0" ];then 
+		quiet="--quiet"
+		quiet2="--really-quiet"
+	fi
+	
     # see if URL is directly passed through
     if [[ $1 == http*  ]];then
         video_url="${1}"
@@ -1409,7 +1422,7 @@ play_video () {
 	if [ "$YTPOT_BASEURL" != "" ];then
 		YTPOT_BASEURL_STRING="--extractor-args $YTPOT_BASEURL "
 	fi
-
+	
     # Run yt-dlp and mpv in a monitored pipeline
     { "${ytube_bin}" "$video_url" \
         -o - \
@@ -1417,14 +1430,14 @@ play_video () {
 		--impersonate chrome \
 		--ignore-errors \
         --cookies-from-browser "${YTDLP_COOKIES}" $YTPOT_BASEURL_STRING \
-        --extractor-args "youtube:player-client=tv_embedded,mweb,tv,default,-web_safari" \
+        --extractor-args "youtube:player-client=mweb,tv,default,-web_safari" \
         --no-check-certificate \
         --no-playlist \
-        --mark-watched \
+        "${quiet}" --mark-watched \
         --continue \
-        | "${mpv_bin}" --title=\""${TheTitle}"\" --geometry=${GEOMETRY1} --autofit=${GEOMETRY2} - --force-seekable=yes;
+        | "${mpv_bin}" --title=\""${TheTitle}"\" --geometry=${GEOMETRY1} --autofit=${GEOMETRY2} - --force-seekable=yes "${quiet2}";
     } || {
-        echo "Pipeline exited or mpv was terminated"
+        loud "[warn] Pipeline exited or mpv was terminated"
         pkill -P $$ "${ytube_bin##*/}" 2>/dev/null
     }
 
