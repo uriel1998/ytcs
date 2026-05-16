@@ -18,6 +18,8 @@ YTDLP_COOKIES="firefox"
 MARK_AGE="TRUE"
 GEOMETRY1="1366x768+50%+50%"
 GEOMETRY2="1366x768"
+V_GEOMETRY1="450x800+50%+50%"
+V_GEOMETRY2="450x800"
 CLIMODE=0
 KITTYMODE=0
 REFRESHED_THIS_RUN=0
@@ -1382,7 +1384,7 @@ extract_youtube_id() {
     return 0
   fi
 
-  echo "Invalid or unsupported URL format" >&2
+  loud "Invalid or unsupported URL format" >&2
   return 1
 }
 
@@ -1399,6 +1401,9 @@ play_video () {
 	
 	local quiet=""
 	local reallyquiet=""
+	local geo=""
+	local geo2=""
+	local is_vert=""
 	
 	if [ "$LOUD" == "0" ];then 
 		quiet="--quiet"
@@ -1408,6 +1413,9 @@ play_video () {
     # see if URL is directly passed through
     if [[ $1 == http*  ]];then
         video_url="${1}"
+		if [ "${video_url}" == *'/shorts/'* ] || [ "${video_url}" == *'tiktok.com/'* ] || [ "${video_url}" == *'facebook.com/'* ];then
+			is_vert="1"
+		fi
         TheVideo=$(extract_youtube_id "${video_url}")
         TheTitle=$(get_webpage_title "${video_url}")
     else
@@ -1416,11 +1424,23 @@ play_video () {
         export TheTitle=$(echo "${2}" | cut -c 4- | sed 's/👀//g' )
         video_url="https://www.youtube.com/watch?v=${TheVideo}"
     fi
+	# More checking for verticalness...
+	if [[ "${TheTitle}" == *'[s]'* ]];then
+		is_vert="1"
+	fi
     # copy url to clipboards
     to_clipboards "${video_url}"
     loud "Loading video ${TheTitle}..."
 	if [ "$YTPOT_BASEURL" != "" ];then
 		YTPOT_BASEURL_STRING="--extractor-args $YTPOT_BASEURL "
+	fi
+	
+	if [ "${is_vert}" == "1" ];then
+		geo="${V_GEOMETRY1}"
+		geo2="${V_GEOMETRY2}"
+	else
+		geo="${GEOMETRY1}"
+		geo2="${GEOMETRY2}"
 	fi
 	
     # Run yt-dlp and mpv in a monitored pipeline
@@ -1435,7 +1455,7 @@ play_video () {
         --no-playlist \
         "${quiet}" --mark-watched \
         --continue \
-        | "${mpv_bin}" --title=\""${TheTitle}"\" --geometry=${GEOMETRY1} --autofit=${GEOMETRY2} - --force-seekable=yes "${quiet2}";
+        | "${mpv_bin}" --title=\""${TheTitle}"\" --geometry=${geo} --autofit=${geo2} - --force-seekable=yes "${quiet2}";
     } || {
         loud "[warn] Pipeline exited or mpv was terminated"
         pkill -P $$ "${ytube_bin##*/}" 2>/dev/null
