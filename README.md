@@ -35,6 +35,7 @@ Useful extras:
 - `jq` for `--addsub` when resolving YouTube handles
 - `kitty` and `wmctrl` for `--kitty`
 - `xclip` and/or `copyq` if you want the current video URL copied to your clipboard
+- `catt` for casting videos to a Chromecast
 
 `curl` is the preferred fetcher when both `curl` and `wget` are installed.
 
@@ -55,17 +56,20 @@ If you create a local `./cache` directory beside the script, `ytcs` will use tha
 
 ## Quick start
 
+
+
 Play a single video directly:
 
 ```bash
-./ytcs.sh 'https://www.youtube.com/watch?v=VIDEO_ID'
+./ytcs.sh 'https://www.youtube.com/watch?v=rveUASDFk58'
 ```
 
-Open the launcher:
 
+Subscribe to a channel:
 ```bash
-./ytcs.sh
+./ytcs.sh --addsub https://www.youtube.com/@complexly
 ```
+
 
 Refresh cached feeds:
 
@@ -85,29 +89,50 @@ Browse without Shorts:
 ./ytcs.sh --time --noshorts
 ```
 
+Subscribe to a second channel:
+```bash
+./ytcs.sh --addsub https://www.youtube.com/@pbsspacetime
+```
+
+Refresh cached feeds:
+
+```bash
+./ytcs.sh --refresh
+```
+
+Browse by subscription:
+
+```bash
+./ytcs.sh --subscription
+```
+
+
 Launch the interface inside kitty:
 
 ```bash
 ./ytcs.sh --kitty --time
 ```
 
-Keep the normal layout, but force kitty graphics in previews:
+Browse and send the selected video to the default Chromecast using `catt`:
 
 ```bash
-./ytcs.sh --fancy --time
+./ytcs.sh --kast --fancy --time
 ```
+
 
 ## Usage
 
 ### Playing one video
 
-If you pass a YouTube URL directly, `ytcs` just hands it off to `mpv`. This is the simplest mode:
+If you pass a YouTube URL directly, `ytcs` hands it off to `mpv`. This is the simplest mode:
 
 ```bash
 ./ytcs.sh 'https://www.youtube.com/watch?v=VIDEO_ID'
 ```
 
 That also updates the local watched cache after playback.
+
+If you want to cast instead, add `--kast` / `-k`. That always sends the full URL to `catt cast`. Check out and get [catt at its repository](https://github.com/skorokithakis/catt).  `ytcs` will send to the default configured device *only*.  
 
 ### Browsing subscriptions
 
@@ -149,6 +174,7 @@ Handle resolution uses the YouTube Data API, so `YTUBE_API_KEY` must be set in `
 - `--fancy`, `-f`: force kitty graphics in previews without relaunching into kitty mode
 - `--refresh`, `-r`: refresh cached feeds and rebuild grouped/time caches
 - `--noshorts`, `-n`: exclude entries marked as Shorts from listing views
+- `--kast`, `-k`: use `catt` instead of `mpv` for playback
 - `--import`, `-i FILE`: import subscriptions from CSV
 - `--addsub URL`: add one subscription from a YouTube handle URL or `/channel/` URL
 - `--subscription`, `-s`: browse videos by channel

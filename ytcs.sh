@@ -21,6 +21,7 @@ GEOMETRY2="1366x768"
 V_GEOMETRY1="450x800+50%+50%"
 V_GEOMETRY2="450x800"
 KITTYMODE=0
+KASTMODE=0
 REFRESHED_THIS_RUN=0
 NO_SHORTS=0
 watchtop=""
@@ -59,6 +60,7 @@ curl_bin=$(which curl)
 mpv_bin=$(which mpv)
 grep_bin=$(which grep)
 timg_bin=$(which timg)
+catt_bin=$(which catt)
 xmlstarlet_bin=$(which xmlstarlet)
 jq_bin=$(which jq)
 kitty_bin=$(which kitty)
@@ -338,6 +340,7 @@ interactive_menu() {
 --help|Show help and exit
 --import|Import subscriptions from CSV
 --addsub|Add a subscription from a YouTube URL
+--kast|Cast the video using catt
 EOF
     )
 
@@ -493,7 +496,7 @@ display_help(){
     cat <<'EOF'
 Usage:
   ytcs.sh [URL]
-  ytcs.sh [--loud] [--kitty] [--fancy] [--refresh] [--noshorts]
+  ytcs.sh [--loud] [--kitty] [--fancy] [--refresh] [--noshorts] [--kast]
           [--import FILE] [--addsub URL]
           [--subscription | --grouped | --time]
 
@@ -515,6 +518,9 @@ Options:
 
   --noshorts, -n
       Exclude YouTube Shorts from video listing views.
+
+  --kast, -k
+      Use catt instead of mpv for playback.
 
   --import, -i FILE
       Import subscriptions from a CSV file in channel-id export format.
@@ -1570,6 +1576,7 @@ play_video () {
 	local geo=""
 	local geo2=""
 	local is_vert=""
+    local played_ok=0
 	
 	if [ "$LOUD" == "0" ];then 
 		quiet="--quiet"
@@ -1608,6 +1615,21 @@ play_video () {
 		geo="${GEOMETRY1}"
 		geo2="${GEOMETRY2}"
 	fi
+
+    if [ "${KASTMODE}" == "1" ];then
+        if [ -z "${catt_bin}" ];then
+            echo "catt is required for --kast mode." 1>&2
+            return 94
+        fi
+
+        "${catt_bin}" cast "${video_url}"
+
+        if [ $? -eq 0 ];then
+            played_ok=1
+        else
+            loud "[warn] catt playback failed"
+        fi
+    else
 	
     # Run yt-dlp and mpv in a monitored pipeline
     { "${ytube_bin}" "$video_url" \
@@ -1626,16 +1648,22 @@ play_video () {
         loud "[warn] Pipeline exited or mpv was terminated"
         pkill -P $$ "${ytube_bin##*/}" 2>/dev/null
     }
+        if [ $? -eq 0 ];then
+            played_ok=1
+        fi
+    fi
 
-    command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${TheVideo}" "${CACHEDIR}/watched_files.txt")
-    count=$(eval "${command}")
-    if [ "$count" == "0" ];then
-        loud "[info] Marking watched"
-        echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
-        mark_if_not_seen "${TheVideo}" "${CACHEDIR}/grouped_data.txt"
-        mark_if_not_seen "${TheVideo}" "${CACHEDIR}/time_data.txt"
-    else
-        loud "[info] Already watched"
+    if [ "${played_ok}" == "1" ] && [ -n "${TheVideo}" ];then
+        command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${TheVideo}" "${CACHEDIR}/watched_files.txt")
+        count=$(eval "${command}")
+        if [ "$count" == "0" ];then
+            loud "[info] Marking watched"
+            echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
+            mark_if_not_seen "${TheVideo}" "${CACHEDIR}/grouped_data.txt"
+            mark_if_not_seen "${TheVideo}" "${CACHEDIR}/time_data.txt"
+        else
+            loud "[info] Already watched"
+        fi
     fi
 }
 
@@ -1682,6 +1710,9 @@ while [ $# -gt 0 ]; do
                     ;;
         --noshorts|-n)
                     export NO_SHORTS=1
+                    shift
+                    ;;
+        --kast|-k)    export KASTMODE=1
                     shift
                     ;;
         --help|-h)     display_help
