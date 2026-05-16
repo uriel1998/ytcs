@@ -31,14 +31,18 @@ if [ -f "${SCRIPT_DIR}/ytcs.env" ];then
     source "${SCRIPT_DIR}/ytcs.env"
 fi
 
-if [ -z "${XDG_DATA_HOME}" ];then
-    export XDG_DATA_HOME="${HOME}/.local/share"
-    export XDG_CONFIG_HOME="${HOME}/.config"
-fi
+if [ -d "${SCRIPT_DIR}/cache" ];then 
+	CACHEDIR="${SCRIPT_DIR}/cache"
+else
+	if [ -z "${XDG_DATA_HOME}" ];then
+		export XDG_DATA_HOME="${HOME}/.local/share"
+		export XDG_CONFIG_HOME="${HOME}/.config"
+	fi
 
-CACHEDIR="${XDG_DATA_HOME}/ytcs"
-if [ ! -d "${CACHEDIR}" ];then
-    mkdir -p "${CACHEDIR}"
+	CACHEDIR="${XDG_DATA_HOME}/ytcs"
+	if [ ! -d "${CACHEDIR}" ];then
+		mkdir -p "${CACHEDIR}"
+	fi
 fi
 PARSED_TIME_DIR="${CACHEDIR}/parsed_time"
 if [ ! -d "${PARSED_TIME_DIR}" ];then
