@@ -577,6 +577,11 @@ fetch_subscription_feed() {
         return 1
     fi
 
+    if [ -f "${output_file}" ] && cmp -s "${temp_file}" "${output_file}"; then
+        rm -f "${temp_file}"
+        return 0
+    fi
+
     mv "${temp_file}" "${output_file}"
     return 0
 }
