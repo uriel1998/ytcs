@@ -547,13 +547,23 @@ fetch_subscription_feed() {
     local accept_header="Accept: application/rss+xml,application/xml,text/xml;q=0.9,*/*;q=0.8"
 
     if [ -n "${curl_bin}" ];then
-        "${curl_bin}" -fsSL \
-            -A "${browser_ua}" \
-            -H "${accept_header}" \
-            "${feed_url}" -o "${temp_file}" || {
-            rm -f "${temp_file}"
-            return 1
-        }
+        if [ "${LOUD}" == "1" ];then
+            "${curl_bin}" -fsSL \
+                -A "${browser_ua}" \
+                -H "${accept_header}" \
+                "${feed_url}" -o "${temp_file}" || {
+                rm -f "${temp_file}"
+                return 1
+            }
+        else
+            "${curl_bin}" -fsSL \
+                -A "${browser_ua}" \
+                -H "${accept_header}" \
+                "${feed_url}" -o "${temp_file}" 2>/dev/null || {
+                rm -f "${temp_file}"
+                return 1
+            }
+        fi
     elif [ -n "${wget_bin}" ];then
         "${wget_bin}" -q \
             --user-agent="${browser_ua}" \
@@ -898,6 +908,16 @@ mark_if_watched() {
     local data="$@"
     local watched_file="${CACHEDIR}/watched_files.txt"
     local line id watched_id
+    local one_week_ago two_weeks_ago three_weeks_ago four_weeks_ago five_weeks_ago
+    local six_weeks_ago seven_weeks_ago epoch human title title_trimmed epoch_trimmed id_trimmed
+    local age_prefix watched_prefix output_line
+
+    trim_whitespace() {
+        local value="$1"
+        value="${value#"${value%%[![:space:]]*}"}"
+        value="${value%"${value##*[![:space:]]}"}"
+        printf "%s" "${value}"
+    }
 
     if [ -f "${watched_file}" ];then
         # Load watched ids into an in-memory hash map once.
@@ -911,6 +931,18 @@ mark_if_watched() {
         #   youtube VIDEO_ID
         # so taking the last whitespace-separated field gives us the id.
         declare -A watched_ids=()
+
+        # Precompute age thresholds once for the whole render pass.
+        # The previous pipeline recalculated and reparsed pieces of this state
+        # repeatedly across separate functions. Keeping everything here turns the
+        # whole visible-row formatting step into one pass over the data.
+        one_week_ago=$(date -d '7 days ago' +%s)
+        two_weeks_ago=$(date -d '14 days ago' +%s)
+        three_weeks_ago=$(date -d '21 days ago' +%s)
+        four_weeks_ago=$(date -d '28 days ago' +%s)
+        five_weeks_ago=$(date -d '35 days ago' +%s)
+        six_weeks_ago=$(date -d '42 days ago' +%s)
+        seven_weeks_ago=$(date -d '49 days ago' +%s)
 
         while IFS= read -r watched_line; do
             [ -z "${watched_line}" ] && continue
@@ -932,19 +964,59 @@ mark_if_watched() {
                 if [[ "${line}" == §* ]];then
                     printf "\n%s\n" "${line}"
                 else
-                    # Visible rows are pipe-delimited, and the video id lives in
-                    # the last field. We trim surrounding whitespace so it matches
-                    # the watched-id keys loaded above.
-                    id=$(echo "${line}" | awk -F'|' '{print $NF}' | xargs)
+                    # Visible rows arrive as:
+                    #   title | epoch | video_id
+                    # The title itself may contain spaces, but feed parsing has
+                    # already stripped pipe characters, so a simple split on "|"
+                    # is sufficient here.
+                    IFS='|' read -r title epoch id <<< "${line}"
+                    title_trimmed=$(trim_whitespace "${title}")
+                    epoch_trimmed=$(trim_whitespace "${epoch}")
+                    id_trimmed=$(trim_whitespace "${id}")
+
+                    if [[ ! "${epoch_trimmed}" =~ ^[0-9]+$ ]];then
+                        printf "%s\n" "${line}"
+                        continue
+                    fi
+
+                    # Convert the stored epoch once here instead of in a later
+                    # formatting pass. The old implementation walked the same row
+                    # through multiple helper functions and re-parsed the fields
+                    # each time.
+                    human=$(date -d "@${epoch_trimmed}" "+%-d %B %Y")
+
+                    if [ "${MARK_AGE}" == "TRUE" ];then
+                        if (( epoch_trimmed < seven_weeks_ago )); then
+                            age_prefix="▁"
+                        elif (( epoch_trimmed < six_weeks_ago )); then
+                            age_prefix="▂"
+                        elif (( epoch_trimmed < five_weeks_ago )); then
+                            age_prefix="▃"
+                        elif (( epoch_trimmed < four_weeks_ago )); then
+                            age_prefix="▄"
+                        elif (( epoch_trimmed < three_weeks_ago )); then
+                            age_prefix="▅"
+                        elif (( epoch_trimmed < two_weeks_ago )); then
+                            age_prefix="▆"
+                        elif (( epoch_trimmed < one_week_ago )); then
+                            age_prefix="▇"
+                        else
+                            age_prefix="█"
+                        fi
+                    else
+                        age_prefix=" "
+                    fi
 
                     # `${array[key]+x}` expands to a non-empty string only if the
                     # key exists. That lets us test membership without caring what
                     # value was stored for the key.
-                    if [ -n "${watched_ids["${id}"]+x}" ]; then
-                        printf "👀 %s\n" "${line}" | mark_age | add_human_date
-                    else
-                        printf "%s\n" "${line}" | mark_age | add_human_date
+                    watched_prefix=""
+                    if [ -n "${watched_ids["${id_trimmed}"]+x}" ]; then
+                        watched_prefix="👀 "
                     fi
+
+                    output_line="${age_prefix} ${watched_prefix}${title_trimmed} | ${human} | ${epoch_trimmed} | ${id_trimmed}"
+                    printf "%s\n" "${output_line}"
                 fi
             done <<< "$(echo "${data}")"
         }
