@@ -111,10 +111,12 @@ fzf_video_select() {
     local prompt="$1"
     local selector_height="100%"
     local preview_window="right,60%,wrap"
+    local preview_cmd="${SCRIPT_PATH} --preview-item {}"
 
     if [ "${KITTYMODE}" == "1" ];then
         selector_height="100%"
         preview_window="down,55%,wrap"
+        preview_cmd="${SCRIPT_PATH} --kitty-launched --preview-item {}"
     fi
 
     fzf \
@@ -126,7 +128,7 @@ fzf_video_select() {
         --with-nth=1,2 \
         --delimiter='|' \
         --header="Tab queue | Enter play queue | $(selector_help)" \
-        --preview="${SCRIPT_PATH} --preview-item {}" \
+        --preview="${preview_cmd}" \
         --preview-window="${preview_window}"
 }
 
@@ -189,6 +191,7 @@ render_thumbnail_preview() {
 # render_thumbnail_preview displays the thumbnail in the fzf preview pane
 ##############################################################################
     local thumb_file="$1"
+    local kitty_graphics="$2"
     local preview_cols="${FZF_PREVIEW_COLUMNS:-60}"
     local preview_lines="${FZF_PREVIEW_LINES:-30}"
     local image_lines=$(( preview_lines / 2 ))
@@ -197,13 +200,10 @@ render_thumbnail_preview() {
     [ ! -f "${thumb_file}" ] && return 1
     [ -z "${timg_bin}" ] && return 1
     [ "${image_lines}" -lt 8 ] && image_lines=8
-	if [ "${KITTYMODE}" == "1" ];then
-		"${timg_bin}" -pk -g "${preview_cols}x${image_lines}" "${thumb_file}" 
-		echo " "
-		echo " "
-		echo " "
-	else
+	if [[ "${kitty_graphics}" == "0" ]];then
 		"${timg_bin}" -g "${preview_cols}x${image_lines}" "${thumb_file}" 
+	else
+		"${timg_bin}" -pk -g "${preview_cols}x${image_lines}" "${thumb_file}" 
 	fi
 }
 
@@ -277,8 +277,12 @@ preview_video_entry() {
 
     if [ -n "${thumbnail_url}" ];then
         thumb_file=$(cache_thumbnail "${video_id}" "${thumbnail_url}")
-        render_thumbnail_preview "${thumb_file}"
-        printf "\n"
+        render_thumbnail_preview "${thumb_file}" "${KITTYMODE}"
+        if [ "${KITTYMODE}" == "0" ];then
+			printf "\n"
+		else
+			printf "\n\n\n\n\n\n\n\n\n"
+		fi
     fi
 
     printf "Title: %s\n" "${title}"
@@ -733,6 +737,9 @@ refresh_subscriptions() {
         [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
         [[ "$(basename "$file")" == "grouped_data.txt" ]] && continue
         [[ "$(basename "$file")" == "time_data.txt" ]] && continue
+        [[ "$(basename "$file")" == "thumbnails" ]] && continue
+        [[ "$(basename "$file")" == "parsed_time" ]] && continue
+        [[ ! -f "$file" ]] && continue
         if [ $watchcount -gt $watchtop ];then
             wait
             watchcount=0
@@ -1191,6 +1198,9 @@ choose_subscription () {
         [[ "$(basename "$file")" == "watched_files.txt" ]] && continue
         [[ "$(basename "$file")" == "grouped_data.txt" ]] && continue
         [[ "$(basename "$file")" == "time_data.txt" ]] && continue
+        [[ "$(basename "$file")" == "thumbnails" ]] && continue
+        [[ "$(basename "$file")" == "parsed_time" ]] && continue
+        [[ ! -f "$file" ]] && continue
         if [ $watchcount -gt $watchtop ];then
             wait
             watchcount=0
