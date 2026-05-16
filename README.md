@@ -15,6 +15,7 @@ If what you want is "show me my subscriptions, let me search quickly, and play t
 - Imports subscriptions from CSV or adds one directly from a YouTube URL
 - Can relaunch into a dedicated kitty window
 - Can force kitty graphics in previews without relaunching the whole UI
+- Uses separate geometry defaults for vertical videos such as Shorts, TikTok, and Facebook video links
 - Can filter Shorts out of listing views
 
 ## Requirements
@@ -117,6 +118,8 @@ There are three main subscription views:
 
 Grouped and chronological views support multi-select queueing with `Tab`.
 
+Videos detected as vertical content use `V_GEOMETRY1` / `V_GEOMETRY2` when available. That currently covers feed entries marked as Shorts and direct URLs that look like YouTube Shorts, TikTok, or Facebook video links.
+
 ### Importing subscriptions
 
 Import a CSV export like this:
@@ -183,6 +186,8 @@ export YTDLP_COOKIES="firefox"
 export MARK_AGE="TRUE"
 export GEOMETRY1="1366x768+50%+50%"
 export GEOMETRY2="1366x768"
+export V_GEOMETRY1="450x800+50%+50%"
+export V_GEOMETRY2="450x800"
 export CLIMODE=0
 # This is if you have a special case for the provider server being on a
 # nonstandard port or machine ONLY, see https://github.com/Brainicism/bgutil-ytdlp-pot-provider?tab=readme-ov-file#usage
@@ -198,6 +203,7 @@ The settings you are most likely to care about are:
 - `YTDLP_COOKIES`: browser profile source for `yt-dlp`
 - `MARK_AGE`: enable or disable age markers in lists
 - `GEOMETRY1`, `GEOMETRY2`: `mpv` geometry options
+- `V_GEOMETRY1`, `V_GEOMETRY2`: `mpv` geometry options for vertical video
 - `YTPOT_BASEURL`: optional extractor args for the BGUtil POTS provider
 - `YTUBE_API_KEY`: required for resolving YouTube handles in `--addsub`
 
@@ -210,6 +216,7 @@ The settings you are most likely to care about are:
 - Feed refresh preserves the old cached XML if a fetched response is invalid or looks like an error page.
 - `--addsub` clears grouped and time caches so they rebuild on next use.
 - Playback still passes `--mark-watched` to `yt-dlp`, and `ytcs` also records local watched state in `watched_files.txt` after the playback pipeline exits.
+- Direct URL playback no longer emits stray video-id output when `LOUD=0`, and invalid URL parsing is now routed through the normal loud/quiet behavior.
 - During playback, `ytcs` updates local watched markers inline in `grouped_data.txt` and `time_data.txt` when those cache files exist.
 - Cache-walking code skips derived directories such as `parsed_time/` and `thumbnails/`, so channel browsing should not emit stray `grep: ... Is a directory` warnings.
 - Some YouTube channels simply do not expose a usable RSS feed even when the channel page itself exists.

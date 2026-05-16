@@ -1,6 +1,29 @@
 # Changelog
 
-## Current development line - 2026-05-16
+## v1.1.0 - 2026-05-16
+
+## Interface and workflow changes
+
+- `--fancy` / `-f` was added to force kitty graphics in previews without relaunching the main UI into kitty mode.
+- Preview subprocesses now inherit kitty-related mode correctly, allowing kitty-specific image rendering logic to work in `--kitty` and preview-only fancy mode.
+
+## Feed handling, parsing, and caching
+
+- Feed refresh preserves the previous cached XML when a fetched response is invalid instead of overwriting good data with an error page or malformed response.
+- Cache-walking loops now skip derived directories like `parsed_time/` and `thumbnails/` to avoid stray directory warnings during subscription browsing.
+
+## Playback and quiet-mode changes
+
+- Direct URL playback no longer emits stray video ids to stdout during queued playback.
+- Invalid direct-URL parsing now follows the script's loud/quiet behavior instead of always printing an error.
+- Missing `grouped_data.txt` and `time_data.txt` files no longer produce `awk` errors when watched markers are updated after playback.
+- Vertical-video handling now uses separate geometry defaults, including support for feed entries marked as Shorts and direct URLs that look like Shorts, TikTok, or Facebook video links.
+
+## Documentation
+
+- README and changelog were updated to describe fancy preview mode, vertical-video geometry, and the current quiet/cache behavior.
+
+## v1.0.0 - 2026-05-16
 
 ## Interface and workflow changes
 
@@ -9,8 +32,6 @@
 - Video selection now supports richer `fzf` behavior, including queueing multiple selected videos for sequential playback.
 - `--kitty` support was added so the interface can relaunch inside a dedicated kitty window with bundled config.
 - Video selection previews now show feed descriptions and thumbnails when the required tools are available.
-- Preview subprocesses now inherit kitty mode correctly, allowing kitty-specific image rendering logic to work in `--kitty` mode.
-- `--fancy` / `-f` was added to force kitty graphics in previews without relaunching the main UI into kitty mode.
 - `--noshorts` / `-n` was added to omit entries marked as Shorts from listing views.
 
 ## Feed handling, parsing, and caching
@@ -20,8 +41,6 @@
 - A per-channel parsed chronological cache (`parsed_time`) was introduced to avoid reparsing unchanged feeds for time-sorted views.
 - Refresh logging became more explicit, including progress output during grouped and chronological cache rebuilds.
 - Cache-location behavior changed: when a local `./cache` directory exists beside the script, it is preferred; otherwise the script still falls back to the XDG data directory.
-- Feed refresh now preserves the previous cached XML when a fetched response is invalid instead of overwriting good data with an error page or malformed response.
-- Cache-walking loops now skip derived directories like `parsed_time/` and `thumbnails/` to avoid stray directory warnings during subscription browsing.
 - Script path detection was updated so the tool behaves correctly when launched through a symlink.
 
 ## Playback and subscription management
