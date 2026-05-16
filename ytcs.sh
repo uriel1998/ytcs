@@ -1257,7 +1257,7 @@ parse_subscriptions(){
             fi
         done
         allfiledata=$(cat ${TEMPFILE})
-        loud "[info] Sorting grouped data"
+        loud "[info] Building grouped data"
         mark_if_watched "${allfiledata}"
         rm "${TEMPFILE}"
     else
@@ -1280,7 +1280,7 @@ parse_subscriptions(){
             fi
         done
 
-        loud "[info] Sorting chronological data"
+        loud "[info] Building chronological data"
         mark_if_watched "$(sort -t '|' -k 2,2nr "${TEMPFILE}")"
         rm "${TEMPFILE}"
     fi
