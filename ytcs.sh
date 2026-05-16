@@ -197,8 +197,14 @@ render_thumbnail_preview() {
     [ ! -f "${thumb_file}" ] && return 1
     [ -z "${timg_bin}" ] && return 1
     [ "${image_lines}" -lt 8 ] && image_lines=8
-
-    "${timg_bin}" -g "${preview_cols}x${image_lines}" "${thumb_file}" 2>/dev/null
+	if [ "${KITTYMODE}" == "1" ];then
+		"${timg_bin}" -pk -g "${preview_cols}x${image_lines}" "${thumb_file}" 
+		echo " "
+		echo " "
+		echo " "
+	else
+		"${timg_bin}" -g "${preview_cols}x${image_lines}" "${thumb_file}" 
+	fi
 }
 
 preview_video_entry() {
