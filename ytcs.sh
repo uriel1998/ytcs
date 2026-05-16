@@ -887,7 +887,34 @@ add_human_date() {
 
 mark_if_watched() {
     local data="$@"
-    if [ -f "${CACHEDIR}"/watched_files.txt ];then
+    local watched_file="${CACHEDIR}/watched_files.txt"
+    local line id watched_id
+
+    if [ -f "${watched_file}" ];then
+        # Load watched ids into an in-memory hash map once.
+        # 1. Read watched_files.txt once at the start of the function.
+        # 2. Extract the video id from each watched line.
+        # 3. Store each id as a key in a Bash associative array.
+        # 4. During list rendering, check whether the current row's id exists in
+        #    that array. That lookup is effectively constant time.
+        #
+        # The watched file currently stores rows like:
+        #   youtube VIDEO_ID
+        # so taking the last whitespace-separated field gives us the id.
+        declare -A watched_ids=()
+
+        while IFS= read -r watched_line; do
+            [ -z "${watched_line}" ] && continue
+
+            # Pull the final whitespace-separated token from the watched row.
+            # For the current file format this is the video id we want to index.
+            watched_id=$(printf "%s\n" "${watched_line}" | awk '{print $NF}')
+            [ -z "${watched_id}" ] && continue
+
+            # The value does not matter; the presence of the key is the lookup.
+            watched_ids["${watched_id}"]=1
+        done < "${watched_file}"
+
         # Filter and prepend § Exit
         {
             echo "§ Exit"
@@ -896,13 +923,15 @@ mark_if_watched() {
                 if [[ "${line}" == §* ]];then
                     printf "\n%s\n" "${line}"
                 else
-                    id=$(echo "${line}" | awk -F'|' '{print $NF}' )  # Extract the string after the last "| "
-                    command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${id}" "${CACHEDIR}/watched_files.txt")
-                    count=$(eval "${command}")
-                    if [ "$count" == "" ];then
-                        count=0
-                    fi
-                    if [ $count -ge 1 ]; then
+                    # Visible rows are pipe-delimited, and the video id lives in
+                    # the last field. We trim surrounding whitespace so it matches
+                    # the watched-id keys loaded above.
+                    id=$(echo "${line}" | awk -F'|' '{print $NF}' | xargs)
+
+                    # `${array[key]+x}` expands to a non-empty string only if the
+                    # key exists. That lets us test membership without caring what
+                    # value was stored for the key.
+                    if [ -n "${watched_ids["${id}"]+x}" ]; then
                         printf "👀 %s\n" "${line}" | mark_age | add_human_date
                     else
                         printf "%s\n" "${line}" | mark_age | add_human_date
