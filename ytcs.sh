@@ -20,7 +20,6 @@ GEOMETRY1="1366x768+50%+50%"
 GEOMETRY2="1366x768"
 V_GEOMETRY1="450x800+50%+50%"
 V_GEOMETRY2="450x800"
-CLIMODE=0
 KITTYMODE=0
 REFRESHED_THIS_RUN=0
 NO_SHORTS=0
@@ -330,7 +329,6 @@ interactive_menu() {
     choices=$(
         cat <<'EOF'
 --loud|Extra feedback on stderr
---cli|CLI mode
 --refresh|Refresh cached subscription data
 --fancy|Force kitty graphics in previews only
 --noshorts|Exclude Shorts from video listings
@@ -495,7 +493,7 @@ display_help(){
     cat <<'EOF'
 Usage:
   ytcs.sh [URL]
-  ytcs.sh [--loud] [--cli] [--kitty] [--fancy] [--refresh] [--noshorts]
+  ytcs.sh [--loud] [--kitty] [--fancy] [--refresh] [--noshorts]
           [--import FILE] [--addsub URL]
           [--subscription | --grouped | --time]
 
@@ -505,9 +503,6 @@ Options:
 
   --loud, -l
       Print progress and diagnostic messages to stderr.
-
-  --cli
-      Enable CLI mode.
 
   --kitty
       Relaunch in a dedicated kitty window using the bundled config.
@@ -1672,9 +1667,6 @@ while [ $# -gt 0 ]; do
                     shift
                     preview_video_entry "$*"
                     exit
-                    ;;
-        --cli)     export CLIMODE=1
-                    shift
                     ;;
         --loud|-l)     export LOUD=1
                     shift

@@ -145,7 +145,6 @@ Handle resolution uses the YouTube Data API, so `YTUBE_API_KEY` must be set in `
 
 - `--help`, `-h`: show help text
 - `--loud`, `-l`: print progress and diagnostic output to stderr
-- `--cli`: enable CLI mode
 - `--kitty`: relaunch in a dedicated kitty window using `ytcs-kitty.conf`
 - `--fancy`, `-f`: force kitty graphics in previews without relaunching into kitty mode
 - `--refresh`, `-r`: refresh cached feeds and rebuild grouped/time caches
@@ -189,7 +188,6 @@ export GEOMETRY1="1366x768+50%+50%"
 export GEOMETRY2="1366x768"
 export V_GEOMETRY1="450x800+50%+50%"
 export V_GEOMETRY2="450x800"
-export CLIMODE=0
 # This is if you have a special case for the provider server being on a
 # nonstandard port or machine ONLY, see https://github.com/Brainicism/bgutil-ytdlp-pot-provider?tab=readme-ov-file#usage
 export YTPOT_BASEURL="youtubepot-bgutilhttp:base_url=http://127.0.0.1:8080"
