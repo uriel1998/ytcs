@@ -11,6 +11,7 @@
 ## Feed handling and playback fixes
 
 - Direct URL vertical-video detection was corrected for TikTok-style URLs so vertical geometry is chosen more reliably for those links.
+- First-run playback no longer emits a `grep` error when `watched_files.txt` does not exist yet; the missing watched cache is now treated as empty until the file is created.
 
 ## Documentation
 
