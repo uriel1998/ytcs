@@ -1,0 +1,98 @@
+# Changelog
+
+## Current development line - 2026-05-16
+
+## Interface and workflow changes
+
+- The project moved from mixed `rofi` / `fzf` support to an `fzf`-only interface.
+- A new interactive launcher was added when `ytcs.sh` is run without arguments.
+- Video selection now supports richer `fzf` behavior, including queueing multiple selected videos for sequential playback.
+- `--kitty` support was added so the interface can relaunch inside a dedicated kitty window with bundled config.
+- Video selection previews now show feed descriptions and thumbnails when the required tools are available.
+- Preview subprocesses now inherit kitty mode correctly, allowing kitty-specific image rendering logic to work in `--kitty` mode.
+- `--fancy` / `-f` was added to force kitty graphics in previews without relaunching the main UI into kitty mode.
+- `--noshorts` / `-n` was added to omit entries marked as Shorts from listing views.
+
+## Feed handling, parsing, and caching
+
+- Feed parsing was significantly reworked.
+- `xmlstarlet` support was added as an optional fast-path parser when available.
+- A per-channel parsed chronological cache (`parsed_time`) was introduced to avoid reparsing unchanged feeds for time-sorted views.
+- Refresh logging became more explicit, including progress output during grouped and chronological cache rebuilds.
+- Cache-location behavior changed: when a local `./cache` directory exists beside the script, it is preferred; otherwise the script still falls back to the XDG data directory.
+- Feed refresh now preserves the previous cached XML when a fetched response is invalid instead of overwriting good data with an error page or malformed response.
+- Cache-walking loops now skip derived directories like `parsed_time/` and `thumbnails/` to avoid stray directory warnings during subscription browsing.
+- Script path detection was updated so the tool behaves correctly when launched through a symlink.
+
+## Playback and subscription management
+
+- Direct subscription addition was added via `--addsub`, including support for YouTube handle URLs and `/channel/` URLs.
+- Handle resolution now uses the YouTube Data API when needed through `YTUBE_API_KEY`.
+- Playback arguments for `yt-dlp` were updated repeatedly to track upstream breakage and compatibility changes.
+- New extractor and playback options were added, including player-client arguments, remote components, impersonation, and POTS-related support.
+- Variable naming around `YTPOT_BASEURL` was cleaned up in the script and corresponding docs were updated.
+
+## Documentation and project assets
+
+- The README was rewritten and expanded to reflect the `fzf`-first workflow, optional preview dependencies, kitty mode, configuration, and the newer subscription-add flow.
+- A project icon (`ytcs-icon.png`) was added.
+- The old rofi theme assets were removed from the main branch.
+- Repository ignore rules were updated.
+
+## v0.9.9 - 2025-07-09
+
+Summary:
+- Last pre-announcement beta tag before the current untagged development line.
+
+Added:
+- Support for playing a single YouTube URL directly from the command line, without entering the subscription browser.
+
+Changed:
+- Cache handling was improved after `v0.9.0`.
+- Watched-state handling was tightened up so videos could be marked more quickly.
+- Documentation was updated to cover the single-URL workflow and include a demo link.
+
+Notes:
+- At this point the project still supported both `rofi` and `fzf`.
+- The cache lived under `${XDG_DATA_HOME}/ytcs`.
+
+## v0.9.0 - 2025-07-08
+
+Summary:
+- First tagged version described by the tag message as "It actually works, but it's got rough edges I'm working on."
+
+Added:
+- Subscription import from CSV export files.
+- Browsing modes for:
+  - videos grouped by subscription
+  - videos in reverse chronological order
+  - browsing videos by selecting a subscription first
+- Watched tracking with cached watched state.
+- Age markers in listings and `MARK_AGE` configuration support.
+- Refresh and derived-cache generation for grouped and chronological views.
+- Environment-based configuration through `ytcs.env`.
+- Concurrency limiting via `watchtop`.
+- Clipboard copying for watched video URLs via `xclip` and/or `copyq`.
+- CLI mode using `fzf` as an alternative to the default `rofi` flow.
+
+Changed:
+- Switched playback to prefer `yt-dlp` when available while still supporting `youtube-dl`.
+- Added video titles to the `mpv` window title.
+- Improved process and watched-cache handling over the commits leading up to the tag.
+
+Included files and assets:
+- `arthur_modified.rasi`
+- `sidebar_right.rasi`
+- `ytcs.env.example`
+- `subscriptions_reference.csv`
+
+## Pre-release history - 2021-12-02 to 2025-07-08
+
+Summary:
+- The repository started as a shell-based YouTube subscription browser and gradually grew from import/parsing experiments into a usable feed browser and player.
+
+Highlights from the untagged history before `v0.9.0`:
+- Initial repository setup and project structure.
+- RSS feed parsing and subscription import work.
+- Early browsing flows built around `rofi`.
+- README and license additions.

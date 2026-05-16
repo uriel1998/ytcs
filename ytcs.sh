@@ -117,6 +117,8 @@ fzf_video_select() {
         selector_height="100%"
         preview_window="down,55%,wrap"
         preview_cmd="${SCRIPT_PATH} --kitty-launched --preview-item {}"
+    elif [ "${KITTYMODE}" == "2" ];then
+        preview_cmd="${SCRIPT_PATH} --fancy --preview-item {}"
     fi
 
     fzf \
@@ -279,10 +281,10 @@ preview_video_entry() {
         thumb_file=$(cache_thumbnail "${video_id}" "${thumbnail_url}")
         render_thumbnail_preview "${thumb_file}" "${KITTYMODE}"
         if [ "${KITTYMODE}" == "0" ];then
-			printf "\n"
-		else
-			printf "\n\n\n\n\n\n\n\n\n"
-		fi
+				printf "\n"
+			else
+				printf "\n\n\n\n\n\n\n\n\n"
+			fi
     fi
 
     printf "Title: %s\n" "${title}"
@@ -313,6 +315,7 @@ interactive_menu() {
 --loud|Extra feedback on stderr
 --cli|CLI mode
 --refresh|Refresh cached subscription data
+--fancy|Force kitty graphics in previews only
 --noshorts|Exclude Shorts from video listings
 --subscription|Browse by subscription
 --grouped|Browse grouped by subscription
@@ -452,13 +455,18 @@ preprocess_args() {
             --kitty-launched)
                 KITTYMODE=1
                 ;;
+            --fancy|-f)
+                if [ "${KITTYMODE}" == "0" ];then
+                    KITTYMODE=2
+                fi
+                ;;
             *)
                 PREPROCESSED_ARGS+=("${arg}")
                 ;;
         esac
     done
 
-    if [ "${launch_kitty}" == "1" ] && [ "${KITTYMODE}" != "1" ];then
+    if [ "${launch_kitty}" == "1" ] && [ "${KITTYMODE}" == "0" ];then
         launch_in_kitty "${PREPROCESSED_ARGS[@]}"
     fi
 }
@@ -470,7 +478,7 @@ display_help(){
     cat <<'EOF'
 Usage:
   ytcs.sh [URL]
-  ytcs.sh [--loud] [--cli] [--kitty] [--refresh] [--noshorts]
+  ytcs.sh [--loud] [--cli] [--kitty] [--fancy] [--refresh] [--noshorts]
           [--import FILE] [--addsub URL]
           [--subscription | --grouped | --time]
 
@@ -486,6 +494,9 @@ Options:
 
   --kitty
       Relaunch in a dedicated kitty window using the bundled config.
+
+  --fancy, -f
+      Force kitty graphics in previews without relaunching into kitty mode.
 
   --refresh, -r
       Refresh all cached subscription feeds and rebuild grouped/time caches.
@@ -1462,6 +1473,12 @@ while [ $# -gt 0 ]; do
                     shift
                     ;;
         --loud|-l)     export LOUD=1
+                    shift
+                    ;;
+        --fancy|-f)
+                    if [ "${KITTYMODE}" == "0" ];then
+                        KITTYMODE=2
+                    fi
                     shift
                     ;;
         --refresh|-r)  refresh_subscriptions

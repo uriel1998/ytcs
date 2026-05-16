@@ -1,37 +1,40 @@
 # ytcs
 
-`ytcs.sh` fetches YouTube channel feeds, lets you browse them with `fzf`, and plays videos with `mpv` and `yt-dlp`.
+`ytcs.sh` fetches YouTube channel feeds, lets you browse them with `fzf`, and plays videos with `mpv` and `yt-dlp`, so you can watch through your normal browser cookies instead of using the YouTube site.
 
-## Features
+If what you want is "show me my subscriptions, let me search quickly, and play things in `mpv`", that is what this script is for.
 
-- Browse videos by channel, grouped by channel, or in reverse chronological order.
-- Queue multiple videos from grouped and chronological views with `Tab`, then play them sequentially.
-- Mark watched videos and show age indicators in the list.
-- Preview feed descriptions and thumbnails in `fzf`.
-- Import subscriptions from CSV or add one directly from a YouTube URL.
-- Optionally relaunch in a dedicated kitty window.
-- Optionally exclude Shorts from listing views.
+[![Video of ytcs in action](https://img.youtube.com/vi/-9A_c_ztEbc/0.jpg)](https://www.youtube.com/watch?v=-9A_c_ztEbc)
+
+## What it does
+
+- Browses videos by channel, grouped by channel, or in reverse chronological order
+- Queues multiple videos from grouped and chronological views with `Tab`
+- Marks watched videos and shows age indicators in the list
+- Previews descriptions and thumbnails in `fzf`
+- Imports subscriptions from CSV or adds one directly from a YouTube URL
+- Can relaunch into a dedicated kitty window
+- Can force kitty graphics in previews without relaunching the whole UI
+- Can filter Shorts out of listing views
 
 ## Requirements
 
-Required for normal use:
+For normal use you need:
 
 - `mpv`
 - `fzf`
 - `yt-dlp` or `youtube-dl`
-- `curl` or `wget` for fetching feeds
+- `curl` or `wget`
 
-Recommended:
+Useful extras:
 
-- `curl`
-
-Optional:
-
-- `xmlstarlet` for faster and more reliable XML parsing
+- `xmlstarlet` for faster and more reliable feed parsing
 - `timg` for thumbnail previews
-- `jq` for `--addsub` when resolving YouTube handle URLs
+- `jq` for `--addsub` when resolving YouTube handles
 - `kitty` and `wmctrl` for `--kitty`
-- `xclip` and/or `copyq` for copying the current video URL to the clipboard
+- `xclip` and/or `copyq` if you want the current video URL copied to your clipboard
+
+`curl` is the preferred fetcher when both `curl` and `wget` are installed.
 
 ## Installation
 
@@ -41,52 +44,37 @@ Clone the repository and make the script executable if needed:
 git clone <repo-url>
 cd ytcs
 chmod +x ytcs.sh
-```
-
-Copy the example environment file and edit it for your setup:
-
-```bash
 cp ytcs.env.example ytcs.env
 ```
 
-If you want cache files to live inside the repository directory, create `./cache`. Otherwise `ytcs` uses `${XDG_DATA_HOME:-$HOME/.local/share}/ytcs`.
+Then edit `ytcs.env` if you want to change defaults.
 
-## Usage
+If you create a local `./cache` directory beside the script, `ytcs` will use that. Otherwise it falls back to `${XDG_DATA_HOME:-$HOME/.local/share}/ytcs`.
 
-Play a single video URL:
+## Quick start
+
+Play a single video directly:
 
 ```bash
 ./ytcs.sh 'https://www.youtube.com/watch?v=VIDEO_ID'
 ```
 
-Open the interactive launcher:
+Open the launcher:
 
 ```bash
 ./ytcs.sh
 ```
 
-Refresh all cached feeds:
+Refresh cached feeds:
 
 ```bash
 ./ytcs.sh --refresh
 ```
 
-Browse grouped by channel:
-
-```bash
-./ytcs.sh --grouped
-```
-
-Browse in chronological order:
+Browse in time order:
 
 ```bash
 ./ytcs.sh --time
-```
-
-Browse by channel:
-
-```bash
-./ytcs.sh --subscription
 ```
 
 Browse without Shorts:
@@ -95,45 +83,76 @@ Browse without Shorts:
 ./ytcs.sh --time --noshorts
 ```
 
-Import subscriptions from CSV:
-
-```bash
-./ytcs.sh --import /path/to/subscriptions.csv
-```
-
-Add one subscription from a YouTube URL:
-
-```bash
-./ytcs.sh --addsub 'https://www.youtube.com/@kurzgesagt'
-```
-
-Launch in a dedicated kitty window:
+Launch the interface inside kitty:
 
 ```bash
 ./ytcs.sh --kitty --time
 ```
 
-Show help:
+Keep the normal layout, but force kitty graphics in previews:
 
 ```bash
-./ytcs.sh --help
+./ytcs.sh --fancy --time
 ```
 
-## Command-line options
+## Usage
 
-- `--help`, `-h`: Show help text.
-- `--loud`, `-l`: Print progress and diagnostic output to stderr.
-- `--cli`: Enable CLI mode.
-- `--kitty`: Relaunch in a dedicated kitty window using `ytcs-kitty.conf`.
-- `--refresh`, `-r`: Refresh cached subscription feeds and rebuild grouped/time caches.
-- `--noshorts`, `-n`: Exclude entries marked as Shorts from listing views.
-- `--import`, `-i FILE`: Import subscriptions from a CSV file in channel-id export format.
-- `--addsub URL`: Add one subscription from a YouTube handle URL or `/channel/` URL.
-- `--subscription`, `-s`: Browse videos by channel.
-- `--grouped`, `-g`: Browse videos grouped by channel.
-- `--time`, `--chronological`, `-t`, `-c`: Browse videos in reverse chronological order.
+### Playing one video
 
-If no arguments are provided, `ytcs.sh` opens an `fzf` multi-select launcher for the main actions.
+If you pass a YouTube URL directly, `ytcs` just hands it off to `mpv`. This is the simplest mode:
+
+```bash
+./ytcs.sh 'https://www.youtube.com/watch?v=VIDEO_ID'
+```
+
+That also updates the local watched cache after playback.
+
+### Browsing subscriptions
+
+There are three main subscription views:
+
+- `--subscription` / `-s`: browse by channel, then choose a video
+- `--grouped` / `-g`: browse grouped channel sections
+- `--time` / `--chronological` / `-t` / `-c`: browse one reverse-chronological feed
+
+Grouped and chronological views support multi-select queueing with `Tab`.
+
+### Importing subscriptions
+
+Import a CSV export like this:
+
+```bash
+./ytcs.sh --import /path/to/subscriptions.csv
+```
+
+The CSV should use the usual channel export shape: channel id, URL, channel name, with no trailing comma. The included sample matches the format FreeTube exports.
+
+### Adding one subscription directly
+
+You can add a channel from either a handle URL or a `/channel/...` URL:
+
+```bash
+./ytcs.sh --addsub 'https://www.youtube.com/@kurzgesagt'
+```
+
+Handle resolution uses the YouTube Data API, so `YTUBE_API_KEY` must be set in `ytcs.env` for `@handle` inputs.
+
+## Command line options
+
+- `--help`, `-h`: show help text
+- `--loud`, `-l`: print progress and diagnostic output to stderr
+- `--cli`: enable CLI mode
+- `--kitty`: relaunch in a dedicated kitty window using `ytcs-kitty.conf`
+- `--fancy`, `-f`: force kitty graphics in previews without relaunching into kitty mode
+- `--refresh`, `-r`: refresh cached feeds and rebuild grouped/time caches
+- `--noshorts`, `-n`: exclude entries marked as Shorts from listing views
+- `--import`, `-i FILE`: import subscriptions from CSV
+- `--addsub URL`: add one subscription from a YouTube handle URL or `/channel/` URL
+- `--subscription`, `-s`: browse videos by channel
+- `--grouped`, `-g`: browse videos grouped by channel
+- `--time`, `--chronological`, `-t`, `-c`: browse videos in reverse chronological order
+
+If you run `ytcs.sh` with no arguments, it opens an `fzf` launcher for the main actions.
 
 ## fzf behavior
 
@@ -142,16 +161,18 @@ If no arguments are provided, `ytcs.sh` opens an `fzf` multi-select launcher for
 - `Tab`: queue multiple videos in grouped and chronological views
 - typing filters the list
 
-Video previews show:
+Video previews can show:
 
 - the feed entry description
-- the cached thumbnail when `timg` is installed
+- the cached thumbnail, if `timg` is installed
 
-In `--kitty` mode, the preview pane is shown below the list instead of beside it.
+In `--kitty` mode, the UI is relaunched inside kitty and the preview pane moves below the list.
+
+In `--fancy` mode, the main UI stays in the normal layout, but preview rendering still gets kitty-style behavior. This can be handy, but it is also the mode most likely to behave oddly in `tmux`, nested terminals, or terminals that only partially support kitty graphics.
 
 ## Configuration
 
-The default configuration in `ytcs.env.example` is:
+The defaults from `ytcs.env.example` are:
 
 ```bash
 export MAX_CHANNEL_AGE=182
@@ -169,32 +190,31 @@ export YTPOT_BASEURL="youtubepot-bgutilhttp:base_url=http://127.0.0.1:8080"
 export YTUBE_API_KEY=""
 ```
 
-Important settings:
+The settings you are most likely to care about are:
 
-- `MAX_CHANNEL_AGE`: Maximum channel age in days for grouped view.
-- `MAX_GROUPED_VIDS`: Maximum videos shown per channel in grouped view.
-- `watchtop`: Maximum concurrent workers for feed refresh and parsing. If unset, `ytcs` uses up to the number of CPU cores.
-- `YTDLP_COOKIES`: Browser profile source for `yt-dlp` cookies.
-- `MARK_AGE`: Enable or disable age markers in lists.
-- `GEOMETRY1`, `GEOMETRY2`: `mpv` window geometry options.
-- `YTPOT_BASEURL`: Optional extractor args for the BGUtil POTS provider.
-- `YTUBE_API_KEY`: Required for resolving handle URLs in `--addsub` when using `@handle` inputs.
+- `MAX_CHANNEL_AGE`: maximum channel age in days for grouped view
+- `MAX_GROUPED_VIDS`: maximum videos shown per channel in grouped view
+- `watchtop`: maximum concurrent workers for refresh and parsing; if unset, `ytcs` uses up to your CPU core count
+- `YTDLP_COOKIES`: browser profile source for `yt-dlp`
+- `MARK_AGE`: enable or disable age markers in lists
+- `GEOMETRY1`, `GEOMETRY2`: `mpv` geometry options
+- `YTPOT_BASEURL`: optional extractor args for the BGUtil POTS provider
+- `YTUBE_API_KEY`: required for resolving YouTube handles in `--addsub`
 
 ## Notes
 
-- Feed data is cached in `./cache` when that directory exists beside the script. Otherwise it is cached under `${XDG_DATA_HOME:-$HOME/.local/share}/ytcs`.
+- Feed data is cached either in local `./cache` or under `${XDG_DATA_HOME:-$HOME/.local/share}/ytcs`.
 - `grouped_data.txt`, `time_data.txt`, and `parsed_time/` are derived caches.
 - `--refresh` refreshes channel XML feeds and rebuilds grouped and chronological caches.
-- `--time` reuses an existing valid time cache and only rebuilds it when the cache is missing or invalid.
-- Feed refresh now preserves the old cached XML if the fetched response is invalid or looks like an error page.
-- `--addsub` clears grouped/time caches so they rebuild on next use.
+- `--time` reuses an existing valid time cache and only rebuilds it when needed.
+- Feed refresh preserves the old cached XML if a fetched response is invalid or looks like an error page.
+- `--addsub` clears grouped and time caches so they rebuild on next use.
 - Playback still passes `--mark-watched` to `yt-dlp`, and `ytcs` also records local watched state in `watched_files.txt` after the playback pipeline exits.
-- During playback, the script updates local watched markers inline in `grouped_data.txt` and `time_data.txt` when those cache files exist.
-- The script copies the current video URL to `xclip` and/or `copyq` when available.
-- `--addsub` supports direct `/channel/...` URLs and handle URLs such as `https://www.youtube.com/@kurzgesagt`.
-- If `YTUBE_API_KEY` is not set for handle resolution, the script points to TunePocket's channel ID finder:
-  `https://www.tunepocket.com/youtube-channel-id-finder/#channle-id-finder-form`
-- Some YouTube channels may not currently expose a working RSS feed even when the channel page itself exists.
+- During playback, `ytcs` updates local watched markers inline in `grouped_data.txt` and `time_data.txt` when those cache files exist.
+- Cache-walking code skips derived directories such as `parsed_time/` and `thumbnails/`, so channel browsing should not emit stray `grep: ... Is a directory` warnings.
+- Some YouTube channels simply do not expose a usable RSS feed even when the channel page itself exists.
+
+This script is for personal use. Make sure your usage complies with YouTube's terms and with the wishes of the creators whose videos you are watching.
 
 ## License
 
