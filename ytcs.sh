@@ -194,6 +194,17 @@ cache_thumbnail() {
     printf "%s\n" "${thumb_file}"
 }
 
+prune_old_thumbnails() {
+##############################################################################
+# prune_old_thumbnails removes cached thumbnails older than 30 days
+##############################################################################
+    local thumb_dir="${CACHEDIR}/thumbnails"
+
+    [ ! -d "${thumb_dir}" ] && return 0
+
+    find "${thumb_dir}" -type f -mtime +30 -delete 2>/dev/null
+}
+
 render_thumbnail_preview() {
 ##############################################################################
 # render_thumbnail_preview displays the thumbnail in the fzf preview pane
@@ -764,6 +775,7 @@ import_subscriptions()
 refresh_subscriptions() {
     REFRESHED_THIS_RUN=1
     loud "[info] Refreshing subscriptions"
+    prune_old_thumbnails
     watchcount=0
     for file in "$CACHEDIR"/*; do
         [[ "$(basename "$file")" == "watched_files.txt" ]] && continue

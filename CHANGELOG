@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.1.1 - 2026-05-16
+
+## Performance and caching
+
+- Watched-state rendering now loads watched ids into memory once instead of running a `grep` against `watched_files.txt` for every visible row.
+- Grouped refresh now reuses per-channel grouped cache fragments, mirroring the existing per-channel chronological cache approach and avoiding unnecessary reparsing of unchanged feeds.
+- Feed refresh now checks whether a validated downloaded XML file is byte-for-byte identical to the existing cache file and skips the overwrite when nothing changed.
+
+## Feed refresh and maintenance
+
+- `--refresh` now prunes cached thumbnails older than 30 days.
+- Quiet mode now suppresses feed-fetch `curl` errors during refresh when `LOUD=0`.
+
+## Presentation and bug fixes
+
+- Title-row newline cleanup was tightened in the feed-entry presentation path.
+- Rows containing emoji such as `📺` in the title no longer get misclassified as grouped headers.
+- Grouped refresh progress output once again shows the channel title instead of the cache filename.
+
 ## v1.1.0 - 2026-05-16
 
 ## Interface and workflow changes

@@ -17,6 +17,7 @@ If what you want is "show me my subscriptions, let me search quickly, and play t
 - Can force kitty graphics in previews without relaunching the whole UI
 - Uses separate geometry defaults for vertical videos such as Shorts, TikTok, and Facebook video links
 - Can filter Shorts out of listing views
+- Reuses per-channel grouped and chronological caches so refreshes avoid unnecessary rebuild work
 
 ## Requirements
 
@@ -210,14 +211,18 @@ The settings you are most likely to care about are:
 ## Notes
 
 - Feed data is cached either in local `./cache` or under `${XDG_DATA_HOME:-$HOME/.local/share}/ytcs`.
-- `grouped_data.txt`, `time_data.txt`, and `parsed_time/` are derived caches.
+- `grouped_data.txt`, `time_data.txt`, `parsed_time/`, and grouped per-channel cache fragments are derived caches.
 - `--refresh` refreshes channel XML feeds and rebuilds grouped and chronological caches.
+- During `--refresh`, cached thumbnails older than 30 days are deleted automatically.
 - `--time` reuses an existing valid time cache and only rebuilds it when needed.
 - Feed refresh preserves the old cached XML if a fetched response is invalid or looks like an error page.
+- If the downloaded XML is valid but identical to the existing cached XML, the old file is kept in place so unchanged feeds do not get a fresh mtime and do not trigger unnecessary rebuild work.
 - `--addsub` clears grouped and time caches so they rebuild on next use.
 - Playback still passes `--mark-watched` to `yt-dlp`, and `ytcs` also records local watched state in `watched_files.txt` after the playback pipeline exits.
 - Direct URL playback no longer emits stray video-id output when `LOUD=0`, and invalid URL parsing is now routed through the normal loud/quiet behavior.
+- Feed-fetch `curl` errors are now suppressed when `LOUD=0`, so quiet mode stays quiet during refresh failures.
 - During playback, `ytcs` updates local watched markers inline in `grouped_data.txt` and `time_data.txt` when those cache files exist.
+- Watched-state marking is now done with an in-memory watched-id map instead of repeated `grep` scans of `watched_files.txt`, which reduces formatting overhead on larger lists.
 - Cache-walking code skips derived directories such as `parsed_time/` and `thumbnails/`, so channel browsing should not emit stray `grep: ... Is a directory` warnings.
 - Some YouTube channels simply do not expose a usable RSS feed even when the channel page itself exists.
 
