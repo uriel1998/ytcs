@@ -1584,7 +1584,7 @@ play_video () {
     # see if URL is directly passed through
     if [[ $1 == http*  ]];then
         video_url="${1}"
-		if [ "${video_url}" == *'/shorts/'* ] || [ "${video_url}" == *'tiktok.com/'* ] || [ "${video_url}" == *'facebook.com/'* ];then
+		if [[ "${video_url}" == *'/shorts/'* || "${video_url}" == *'tiktok.com/'* || "${video_url}" == *'facebook.com/'* ]];then
 			is_vert="1"
 		fi
         TheVideo=$(extract_youtube_id "${video_url}")
