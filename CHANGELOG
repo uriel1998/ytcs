@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.2.0 - 2026-05-16
+
+## Playback and interface changes
+
+- Casting support was added via `--kast` / `-k`, using `catt cast` with the full resolved URL instead of the normal `mpv` playback path.
+- Historical short-option compatibility was preserved by leaving `-c` assigned to chronological browsing and assigning casting to `-k` instead.
+- The old unused `--cli` mode switch and its dead configuration remnants were removed from the current code and docs.
+
+## Feed handling and playback fixes
+
+- Direct URL vertical-video detection was corrected for TikTok-style URLs so vertical geometry is chosen more reliably for those links.
+
+## Documentation
+
+- README usage text now explicitly calls out which inputs are positional arguments, including direct playback URLs, `--import FILE`, and `--addsub URL`.
+
 ## v1.1.1 - 2026-05-16
 
 ## Performance and caching

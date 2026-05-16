@@ -540,6 +540,9 @@ Views:
 
 Behavior:
   If no arguments are provided, ytcs opens an fzf multi-select launcher.
+  A bare URL is a positional direct-playback argument.
+  --import consumes the following FILE positional argument.
+  --addsub consumes the following URL positional argument.
   --time uses an existing valid time cache and only rebuilds it when missing
   or invalid.
   fzf controls: Enter select, Esc cancel, type to filter, Ctrl-J/K move.

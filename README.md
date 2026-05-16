@@ -56,7 +56,7 @@ If you create a local `./cache` directory beside the script, `ytcs` will use tha
 
 ## Quick start
 
-
+These commands should give you a good idea of how `ytcs` works and what it can (and cannot) do.
 
 Play a single video directly:
 
@@ -64,12 +64,10 @@ Play a single video directly:
 ./ytcs.sh 'https://www.youtube.com/watch?v=rveUASDFk58'
 ```
 
-
 Subscribe to a channel:
 ```bash
 ./ytcs.sh --addsub https://www.youtube.com/@complexly
 ```
-
 
 Refresh cached feeds:
 
@@ -106,25 +104,29 @@ Browse by subscription:
 ./ytcs.sh --subscription
 ```
 
-
-Launch the interface inside kitty:
+Launch the interface inside kitty (if kitty is installed):
 
 ```bash
 ./ytcs.sh --kitty --time
 ```
 
-Browse and send the selected video to the default Chromecast using `catt`:
+Browse and send the selected video to the default Chromecast using `catt`, if installed.:
 
 ```bash
 ./ytcs.sh --kast --fancy --time
 ```
 
-
 ## Usage
+
+`ytcs` uses a mix of flags and positional arguments:
+
+- `./ytcs.sh URL`: the bare trailing `URL` is a positional argument for direct playback
+- `./ytcs.sh --import FILE`: `FILE` is a positional argument consumed by `--import`
+- `./ytcs.sh --addsub URL`: `URL` is a positional argument consumed by `--addsub`
 
 ### Playing one video
 
-If you pass a YouTube URL directly, `ytcs` hands it off to `mpv`. This is the simplest mode:
+If you pass a URL directly as the first non-option argument, `ytcs` hands it off to playback. This is the simplest mode:
 
 ```bash
 ./ytcs.sh 'https://www.youtube.com/watch?v=VIDEO_ID'
@@ -156,6 +158,8 @@ Import a CSV export like this:
 
 The CSV should use the usual channel export shape: channel id, URL, channel name, with no trailing comma. The included sample matches the format FreeTube exports.
 
+The path after `--import` is positional, so keep it immediately after the switch.
+
 ### Adding one subscription directly
 
 You can add a channel from either a handle URL or a `/channel/...` URL:
@@ -165,6 +169,8 @@ You can add a channel from either a handle URL or a `/channel/...` URL:
 ```
 
 Handle resolution uses the YouTube Data API, so `YTUBE_API_KEY` must be set in `ytcs.env` for `@handle` inputs.
+
+The URL after `--addsub` is positional, so keep it immediately after the switch.
 
 ## Command line options
 
@@ -182,6 +188,13 @@ Handle resolution uses the YouTube Data API, so `YTUBE_API_KEY` must be set in `
 - `--time`, `--chronological`, `-t`, `-c`: browse videos in reverse chronological order
 
 If you run `ytcs.sh` with no arguments, it opens an `fzf` launcher for the main actions.
+
+Positional argument rules:
+
+- A bare `URL` means "play this one video or page directly"
+- `--import` consumes the following `FILE`
+- `--addsub` consumes the following `URL`
+- `--kast` is a mode flag and can be combined with direct-URL playback or the browsing views
 
 ## fzf behavior
 
@@ -243,7 +256,9 @@ The settings you are most likely to care about are:
 - If the downloaded XML is valid but identical to the existing cached XML, the old file is kept in place so unchanged feeds do not get a fresh mtime and do not trigger unnecessary rebuild work.
 - `--addsub` clears grouped and time caches so they rebuild on next use.
 - Playback still passes `--mark-watched` to `yt-dlp`, and `ytcs` also records local watched state in `watched_files.txt` after the playback pipeline exits.
+- `--kast` / `-k` switches playback from `mpv` to `catt cast`, always using the full resolved URL.
 - Direct URL playback no longer emits stray video-id output when `LOUD=0`, and invalid URL parsing is now routed through the normal loud/quiet behavior.
+- Short-option compatibility was preserved for older tags by keeping `-c` assigned to chronological browsing and using `-k` for casting instead.
 - Feed-fetch `curl` errors are now suppressed when `LOUD=0`, so quiet mode stays quiet during refresh failures.
 - During playback, `ytcs` updates local watched markers inline in `grouped_data.txt` and `time_data.txt` when those cache files exist.
 - Watched-state marking is now done with an in-memory watched-id map instead of repeated `grep` scans of `watched_files.txt`, which reduces formatting overhead on larger lists.
