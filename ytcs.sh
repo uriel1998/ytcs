@@ -893,7 +893,7 @@ mark_if_watched() {
             echo "§ Exit"
             while IFS= read -r line; do
                 [[ "${line}" == "" ]] && continue
-                if [[ $line == *"📺"* ]];then
+                if [[ "${line}" == §* ]];then
                     printf "\n%s\n" "${line}"
                 else
                     id=$(echo "${line}" | awk -F'|' '{print $NF}' )  # Extract the string after the last "| "
@@ -1050,7 +1050,7 @@ extract_feed_entries() {
             -m '//atom:entry' \
             -v 'concat(translate(normalize-space(atom:title),"|",""), " | ", normalize-space(atom:published), " | ", normalize-space(yt:videoId), " | ", substring("1", 1, contains(atom:link[@rel="alternate"]/@href, "/shorts/")))' \
             -n "${file}" 2>/dev/null \
-            | awk -v max="${max_entries}" 'NR<=max { gsub(/"/,"‘"); gsub(/&/,"and"); print }'
+            | awk -v max="${max_entries}" 'NR<=max { gsub(/\r/,""); gsub(/\n/," "); gsub(/[[:space:]]+/," "); gsub(/"/,"‘"); gsub(/&/,"and"); sub(/^[[:space:]]+/,""); sub(/[[:space:]]+$/,""); print }'
     else
         awk -v max="${max_entries}" '
             BEGIN {
@@ -1069,9 +1069,14 @@ extract_feed_entries() {
                 if (match($0, /<yt:videoId[^>]*>([^<]+)/, m)) video_id=m[1]
                 if ($0 ~ /<link[^>]*rel="alternate"[^>]*href="https:[^"]*\/shorts\//) is_short="1"
 
+                gsub(/\r/, "", title)
+                gsub(/\n/, " ", title)
+                gsub(/[[:space:]]+/, " ", title)
                 gsub(/\|/, "", title)
                 gsub(/&quot;/, "‘", title)
                 gsub(/&amp;/, "and", title)
+                sub(/^[[:space:]]+/, "", title)
+                sub(/[[:space:]]+$/, "", title)
 
                 if (title != "" && published != "" && video_id != "") {
                     printf "%s | %s | %s | %s\n", title, published, video_id, is_short
@@ -1390,11 +1395,14 @@ extract_youtube_id() {
 
 get_webpage_title() {
   local url="$1"
-
-  curl -Ls "$url" 2>/dev/null | \
+  local raw_title=""
+  local cleaned_title=""
+  raw_title=$(curl -Ls "$url" 2>/dev/null | \
     grep -i -o '<title[^>]*>.*</title>' | \
     sed -e 's/<title[^>]*>//I' -e 's:</title>::I' | \
-    head -n 1
+    head -n 1)
+  cleaned_title=${raw_title//$'\n'/}
+  echo "${cleaned_title}"
 }
 
 play_video () {
