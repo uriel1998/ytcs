@@ -51,6 +51,10 @@ PARSED_TIME_DIR="${CACHEDIR}/parsed_time"
 if [ ! -d "${PARSED_TIME_DIR}" ];then
     mkdir -p "${PARSED_TIME_DIR}"
 fi
+GROUPED_PARSED_DIR="${CACHEDIR}/parsed_grouped_${MAX_GROUPED_VIDS}_${MAX_CHANNEL_AGE}"
+if [ ! -d "${GROUPED_PARSED_DIR}" ];then
+    mkdir -p "${GROUPED_PARSED_DIR}"
+fi
 wget_bin=$(which wget)
 curl_bin=$(which curl)
 mpv_bin=$(which mpv)
@@ -1159,6 +1163,50 @@ build_time_channel_cache() {
     printf "%s\n" "${parsed_file}"
 }
 
+build_grouped_channel_cache() {
+##############################################################################
+# build_grouped_channel_cache stores parsed grouped data for one channel
+# and mirrors the per-channel cache: 
+# - read one source XML feed
+# - build one small derived file for grouped view
+# - only rebuild that derived file when the source XML is newer
+# Should help refresh performance after first refresh by only parsing 
+# newly changed feeds. Directory includes MAX_GROUPED_VIDS and MAX_CHANNEL_AGE:
+# those settings change what grouped output should look like. 
+##############################################################################
+    local file="$1"
+    local channel_id
+    local chantitle
+    local parsed_file
+    local temp_file
+    local thischanneldata
+    local thischannelage
+    local thischanneltitle
+
+    channel_id=$(basename "${file}")
+    parsed_file="${GROUPED_PARSED_DIR}/${channel_id}.txt"
+
+    if ! is_source_newer_than_target "${file}" "${parsed_file}"; then
+        printf "%s\n" "${parsed_file}"
+        return 0
+    fi
+
+    chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
+    temp_file="${parsed_file}.tmp.$$"
+
+    thischanneldata=$(extract_feed_entries "${file}" "${MAX_GROUPED_VIDS}" | convert_feed_dates_to_epoch)
+    thischannelage=$(most_recent_age "$thischanneldata")
+    thischanneltitle=$(printf "§ 📺 %s - %s" "$chantitle" "$thischannelage")
+
+    : > "${temp_file}"
+    if [[ "${thischannelage}" =~ ^[0-9]+$ ]] && [ "${thischannelage}" -le "${MAX_CHANNEL_AGE}" ];then
+        printf "\n%s\n%s\n" "$thischanneltitle" "$thischanneldata" > "${temp_file}"
+    fi
+
+    mv "${temp_file}" "${parsed_file}"
+    printf "%s\n" "${parsed_file}"
+}
+
 parse_subscriptions(){
     trap '' PIPE
     local phase="$2"
@@ -1191,12 +1239,9 @@ parse_subscriptions(){
         for file in "${feed_files[@]}"; do
             if [ -f "$file" ];then
                 chantitle=$(grep -m 1 "<title>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
-                chanid=$(grep -m 1 "<yt:channelId>" "$file" | awk -F '>' '{print $2}' | awk -F '<' '{print $1}')
-				thischanneldata=$(extract_feed_entries "${file}" "${MAX_GROUPED_VIDS}" | convert_feed_dates_to_epoch)
-                thischannelage=$(most_recent_age "$thischanneldata")
-                thischanneltitle=$(printf "§ 📺 %s - %s" "$chantitle" "$thischannelage")
-                if [[ "${thischannelage}" =~ ^[0-9]+$ ]] && [ "${thischannelage}" -le "${MAX_CHANNEL_AGE}" ];then
-                    printf "\n%s\n%s\n" "$thischanneltitle" "$thischanneldata" >> "${TEMPFILE}"
+                parsed_file=$(build_grouped_channel_cache "${file}")
+                if [ -f "${parsed_file}" ];then
+                    cat "${parsed_file}" >> "${TEMPFILE}"
                 fi
             else
                 echo "Error in reading subscriptions list!"
