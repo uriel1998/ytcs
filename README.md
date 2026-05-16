@@ -39,7 +39,7 @@ Useful extras:
 
 ## Installation
 
-Clone the repository and make the script executable if needed:
+Clone the repository from [GitHub](https://github.com/uriel1998/ytcs) or [GitLab](https://gitlab.com/uriel1998/ytcs) and make the script executable if needed:
 
 ```bash
 git clone <repo-url>
