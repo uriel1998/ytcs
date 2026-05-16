@@ -4,7 +4,7 @@
 
 If what you want is "show me my subscriptions, let me search quickly, and play things in `mpv`", that is what this script is for.
 
-[![Video of ytcs in action](https://img.youtube.com/vi/-9A_c_ztEbc/0.jpg)](https://www.youtube.com/watch?v=-9A_c_ztEbc)
+[![Video of ytcs in action](https://img.youtube.com/vi/-9A_c_ztEbc/0.jpg)](https://youtu.be/kR-J-TW4C8U)
 
 ## What it does
 
