@@ -1657,8 +1657,12 @@ play_video () {
     fi
 
     if [ "${played_ok}" == "1" ] && [ -n "${TheVideo}" ];then
-        command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${TheVideo}" "${CACHEDIR}/watched_files.txt")
-        count=$(eval "${command}")
+        if [ -f "${CACHEDIR}/watched_files.txt" ];then
+            command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${TheVideo}" "${CACHEDIR}/watched_files.txt")
+            count=$(eval "${command}")
+        else
+            count="0"
+        fi
         if [ "$count" == "0" ];then
             loud "[info] Marking watched"
             echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
