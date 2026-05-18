@@ -1572,6 +1572,28 @@ get_webpage_title() {
   echo "${cleaned_title}"
 }
 
+mark_video_watched() {
+    local video_id="$1"
+
+    [ -z "${video_id}" ] && return 0
+
+    if [ -f "${CACHEDIR}/watched_files.txt" ];then
+        command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${video_id}" "${CACHEDIR}/watched_files.txt")
+        count=$(eval "${command}")
+    else
+        count="0"
+    fi
+
+    if [ "$count" == "0" ];then
+        loud "[info] Marking watched"
+        echo "youtube ${video_id}" >> "${CACHEDIR}"/watched_files.txt
+        mark_if_not_seen "${video_id}" "${CACHEDIR}/grouped_data.txt"
+        mark_if_not_seen "${video_id}" "${CACHEDIR}/time_data.txt"
+    else
+        loud "[info] Already watched"
+    fi
+}
+
 play_video () {
 	
 	local quiet=""
@@ -1579,7 +1601,6 @@ play_video () {
 	local geo=""
 	local geo2=""
 	local is_vert=""
-    local played_ok=0
 	
 	if [ "$LOUD" == "0" ];then 
 		quiet="--quiet"
@@ -1606,6 +1627,7 @@ play_video () {
 	fi
     # copy url to clipboards
     to_clipboards "${video_url}"
+    mark_video_watched "${TheVideo}"
     loud "Loading video ${TheTitle}..."
 	if [ "$YTPOT_BASEURL" != "" ];then
 		YTPOT_BASEURL_STRING="--extractor-args $YTPOT_BASEURL "
@@ -1626,10 +1648,7 @@ play_video () {
         fi
 
         "${catt_bin}" cast "${video_url}"
-
-        if [ $? -eq 0 ];then
-            played_ok=1
-        else
+        if [ $? -ne 0 ];then
             loud "[warn] catt playback failed"
         fi
     else
@@ -1651,26 +1670,6 @@ play_video () {
         loud "[warn] Pipeline exited or mpv was terminated"
         pkill -P $$ "${ytube_bin##*/}" 2>/dev/null
     }
-        if [ $? -eq 0 ];then
-            played_ok=1
-        fi
-    fi
-
-    if [ "${played_ok}" == "1" ] && [ -n "${TheVideo}" ];then
-        if [ -f "${CACHEDIR}/watched_files.txt" ];then
-            command=$(printf "%s -c -- \"%s\" \"%s\"" "${grep_bin}" "${TheVideo}" "${CACHEDIR}/watched_files.txt")
-            count=$(eval "${command}")
-        else
-            count="0"
-        fi
-        if [ "$count" == "0" ];then
-            loud "[info] Marking watched"
-            echo "youtube ${TheVideo}" >> "${CACHEDIR}"/watched_files.txt
-            mark_if_not_seen "${TheVideo}" "${CACHEDIR}/grouped_data.txt"
-            mark_if_not_seen "${TheVideo}" "${CACHEDIR}/time_data.txt"
-        else
-            loud "[info] Already watched"
-        fi
     fi
 }
 
