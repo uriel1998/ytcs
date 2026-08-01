@@ -117,7 +117,7 @@ fzf_video_select() {
 ##############################################################################
     local prompt="$1"
     local selector_height="100%"
-    local preview_window="right,60%,wrap"
+    local preview_window="right,40%,wrap"
     local preview_cmd="${SCRIPT_PATH} --preview-item {}"
 
     if [ "${KITTYMODE}" == "1" ];then
