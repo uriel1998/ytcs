@@ -7,6 +7,7 @@
 - Casting support was added via `--kast` / `-k`, using `catt cast` with the full resolved URL instead of the normal `mpv` playback path.
 - Historical short-option compatibility was preserved by leaving `-c` assigned to chronological browsing and assigning casting to `-k` instead.
 - The old unused `--cli` mode switch and its dead configuration remnants were removed from the current code and docs.
+- `--remsub` was added to remove a subscription by the same URL forms accepted by `--addsub` or by a direct `UC...` channel id.
 
 ## Feed handling and playback fixes
 
@@ -15,7 +16,7 @@
 
 ## Documentation
 
-- README usage text now explicitly calls out which inputs are positional arguments, including direct playback URLs, `--import FILE`, and `--addsub URL`.
+- README usage text now explicitly calls out which inputs are positional arguments, including direct playback URLs, `--import FILE`, `--addsub URL`, and `--remsub URL_OR_CHANNEL_ID`.
 
 ## v1.1.1 - 2026-05-16
 

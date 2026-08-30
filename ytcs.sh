@@ -324,7 +324,7 @@ interactive_menu() {
 ##############################################################################
 # interactive_menu builds switches from an fzf multi-select launcher
 ##############################################################################
-    local choices selected line option import_file addsub_url browse_count
+    local choices selected line option import_file addsub_url remsub_ref browse_count
     local -a selected_args=()
     MENU_ARGS=()
 
@@ -340,6 +340,7 @@ interactive_menu() {
 --help|Show help and exit
 --import|Import subscriptions from CSV
 --addsub|Add a subscription from a YouTube URL
+--remsub|Remove a subscription by URL or channel id
 --kast|Cast the video using catt
 EOF
     )
@@ -391,10 +392,17 @@ EOF
                 exit 96
             fi
         fi
+        if [ "${option}" == "--remsub" ];then
+            read -r -p "YouTube URL or channel id for --remsub: " remsub_ref
+            if [ -z "${remsub_ref}" ];then
+                echo "--remsub requires a YouTube URL or channel id." 1>&2
+                exit 96
+            fi
+        fi
     done
 
     MENU_ARGS=("${selected_args[@]}")
-    if printf "%s\n" "${selected_args[@]}" | grep -Eq '^--(import|addsub)$'; then
+    if printf "%s\n" "${selected_args[@]}" | grep -Eq '^--(import|addsub|remsub)$'; then
         local -a expanded_args=()
         for option in "${selected_args[@]}"; do
             expanded_args+=("${option}")
@@ -403,6 +411,9 @@ EOF
             fi
             if [ "${option}" == "--addsub" ];then
                 expanded_args+=("${addsub_url}")
+            fi
+            if [ "${option}" == "--remsub" ];then
+                expanded_args+=("${remsub_ref}")
             fi
         done
         MENU_ARGS=("${expanded_args[@]}")
@@ -497,7 +508,7 @@ display_help(){
 Usage:
   ytcs.sh [URL]
   ytcs.sh [--loud] [--kitty] [--fancy] [--refresh] [--noshorts] [--kast]
-          [--import FILE] [--addsub URL]
+          [--import FILE] [--addsub URL] [--remsub URL_OR_CHANNEL_ID]
           [--subscription | --grouped | --time]
 
 Options:
@@ -528,6 +539,9 @@ Options:
   --addsub URL
       Add one subscription from a YouTube handle URL or /channel/ URL.
 
+  --remsub URL_OR_CHANNEL_ID
+      Remove one subscription by YouTube URL, handle, /channel/ URL, or channel id.
+
 Views:
   --subscription, -s
       Browse videos by channel.
@@ -543,6 +557,7 @@ Behavior:
   A bare URL is a positional direct-playback argument.
   --import consumes the following FILE positional argument.
   --addsub consumes the following URL positional argument.
+  --remsub consumes the following URL or channel-id positional argument.
   --time uses an existing valid time cache and only rebuilds it when missing
   or invalid.
   fzf controls: Enter select, Esc cancel, type to filter, Ctrl-J/K move.
@@ -748,6 +763,76 @@ add_subscription_from_url() {
     fi
 
     rm -f "${CACHEDIR}/grouped_data.txt" "${CACHEDIR}/time_data.txt"
+    loud "[info] Cleared grouped and chronological caches; they will rebuild on next use."
+    return 0
+}
+
+resolve_subscription_ref() {
+##############################################################################
+# resolve_subscription_ref accepts either a direct channel id or any of the
+# same URL/handle forms accepted by --addsub and returns a channel id.
+##############################################################################
+    local ref="$1"
+    local channel_ref channel_id
+
+    if [ -z "${ref}" ];then
+        return 1
+    fi
+
+    if [[ "${ref}" =~ ^UC[A-Za-z0-9_-]+$ ]];then
+        printf "%s\n" "${ref}"
+        return 0
+    fi
+
+    channel_ref=$(extract_channel_ref "${ref}") || return 1
+
+    case "${channel_ref}" in
+        id:*)
+            channel_id="${channel_ref#id:}"
+            ;;
+        handle:*)
+            channel_id=$(channel_id_from_handle "${channel_ref#handle:}") || return 1
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    printf "%s\n" "${channel_id}"
+}
+
+remove_subscription() {
+##############################################################################
+# remove_subscription deletes the feed cache file that represents an active
+# subscription and removes the per-channel derived cache fragments as well.
+##############################################################################
+    local ref="$1"
+    local channel_id feed_file parsed_time_file grouped_parsed_file
+
+    if [ -z "${ref}" ];then
+        echo "--remsub requires a YouTube URL or channel id." 1>&2
+        return 96
+    fi
+
+    channel_id=$(resolve_subscription_ref "${ref}") || {
+        echo "Unsupported input for --remsub: ${ref}" 1>&2
+        echo "Use a handle URL, a /channel/ URL, or a channel id like UC..." 1>&2
+        return 96
+    }
+
+    feed_file="${CACHEDIR}/${channel_id}"
+    parsed_time_file="${PARSED_TIME_DIR}/${channel_id}.txt"
+    grouped_parsed_file="${GROUPED_PARSED_DIR}/${channel_id}.txt"
+
+    if [ ! -f "${feed_file}" ];then
+        echo "Subscription not found: ${channel_id}" 1>&2
+        return 97
+    fi
+
+    rm -f "${feed_file}" "${parsed_time_file}" "${grouped_parsed_file}"
+    rm -f "${CACHEDIR}/grouped_data.txt" "${CACHEDIR}/time_data.txt"
+
+    echo "Removed subscription: ${channel_id}"
     loud "[info] Cleared grouped and chronological caches; they will rebuild on next use."
     return 0
 }
@@ -1740,6 +1825,14 @@ while [ $# -gt 0 ]; do
                     ;;
         --addsub)   shift
                     add_subscription_from_url "${1}"
+                    [ $# -gt 0 ] && shift
+                    ;;
+        --remsub=*)
+                    remove_subscription "${1#--remsub=}"
+                    shift
+                    ;;
+        --remsub)   shift
+                    remove_subscription "${1}"
                     [ $# -gt 0 ] && shift
                     ;;
         --grouped|-g)

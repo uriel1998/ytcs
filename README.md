@@ -92,6 +92,11 @@ Subscribe to a second channel:
 ./ytcs.sh --addsub https://www.youtube.com/@pbsspacetime
 ```
 
+Remove a subscription by URL:
+```bash
+./ytcs.sh --remsub https://www.youtube.com/@pbsspacetime
+```
+
 Refresh cached feeds:
 
 ```bash
@@ -123,6 +128,7 @@ Browse and send the selected video to the default Chromecast using `catt`, if in
 - `./ytcs.sh URL`: the bare trailing `URL` is a positional argument for direct playback
 - `./ytcs.sh --import FILE`: `FILE` is a positional argument consumed by `--import`
 - `./ytcs.sh --addsub URL`: `URL` is a positional argument consumed by `--addsub`
+- `./ytcs.sh --remsub URL_OR_CHANNEL_ID`: the trailing value is a positional argument consumed by `--remsub`
 
 ### Playing one video
 
@@ -172,6 +178,17 @@ Handle resolution uses the YouTube Data API, so `YTUBE_API_KEY` must be set in `
 
 The URL after `--addsub` is positional, so keep it immediately after the switch.
 
+### Removing one subscription directly
+
+You can remove a subscription by passing either the same kind of YouTube URL accepted by `--addsub` or the raw `UC...` channel id:
+
+```bash
+./ytcs.sh --remsub 'https://www.youtube.com/@kurzgesagt'
+./ytcs.sh --remsub 'UCsXVk37bltHxD1rDPwtNM8Q'
+```
+
+The value after `--remsub` is positional, so keep it immediately after the switch.
+
 ## Command line options
 
 - `--help`, `-h`: show help text
@@ -183,6 +200,7 @@ The URL after `--addsub` is positional, so keep it immediately after the switch.
 - `--kast`, `-k`: use `catt` instead of `mpv` for playback
 - `--import`, `-i FILE`: import subscriptions from CSV
 - `--addsub URL`: add one subscription from a YouTube handle URL or `/channel/` URL
+- `--remsub URL_OR_CHANNEL_ID`: remove one subscription by YouTube URL, handle, `/channel/` URL, or channel id
 - `--subscription`, `-s`: browse videos by channel
 - `--grouped`, `-g`: browse videos grouped by channel
 - `--time`, `--chronological`, `-t`, `-c`: browse videos in reverse chronological order
@@ -194,6 +212,7 @@ Positional argument rules:
 - A bare `URL` means "play this one video or page directly"
 - `--import` consumes the following `FILE`
 - `--addsub` consumes the following `URL`
+- `--remsub` consumes the following `URL` or channel id
 - `--kast` is a mode flag and can be combined with direct-URL playback or the browsing views
 
 ## fzf behavior
@@ -255,6 +274,7 @@ The settings you are most likely to care about are:
 - Feed refresh preserves the old cached XML if a fetched response is invalid or looks like an error page.
 - If the downloaded XML is valid but identical to the existing cached XML, the old file is kept in place so unchanged feeds do not get a fresh mtime and do not trigger unnecessary rebuild work.
 - `--addsub` clears grouped and time caches so they rebuild on next use.
+- `--remsub` removes the cached feed file that represents the subscription, removes per-channel derived cache fragments when present, and clears grouped/time caches so they rebuild on next use.
 - Playback still passes `--mark-watched` to `yt-dlp`, and `ytcs` also records local watched state in `watched_files.txt` after the playback pipeline exits.
 - `--kast` / `-k` switches playback from `mpv` to `catt cast`, always using the full resolved URL.
 - Direct URL playback no longer emits stray video-id output when `LOUD=0`, and invalid URL parsing is now routed through the normal loud/quiet behavior.
