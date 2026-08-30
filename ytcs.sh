@@ -12,6 +12,7 @@
 ##############################################################################
 
 # defaults
+VERSION="v1.2.1"
 MAX_CHANNEL_AGE=182
 MAX_GROUPED_VIDS=10
 YTDLP_COOKIES="firefox"
@@ -504,7 +505,9 @@ display_help(){
 ##############################################################################
 # Show the Help
 ##############################################################################
-    cat <<'EOF'
+    cat <<EOF
+ytcs ${VERSION}
+
 Usage:
   ytcs.sh [URL]
   ytcs.sh [--loud] [--kitty] [--fancy] [--refresh] [--noshorts] [--kast]

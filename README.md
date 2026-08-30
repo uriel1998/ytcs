@@ -2,7 +2,7 @@
 
 `ytcs.sh` fetches YouTube channel feeds, lets you browse them with `fzf`, and plays videos with `mpv` and `yt-dlp`, so you can watch through your normal browser cookies instead of using the YouTube site.
 
-If what you want is "show me my subscriptions, let me search quickly, and play things in `mpv`", that is what this script is for.
+If what you want is "show me my subscriptions, let me search quickly, and play things in `mpv`", that is what this script is for. The current release line is `v1.2.1`.
 
 [![Video of ytcs in action](https://img.youtube.com/vi/-9A_c_ztEbc/0.jpg)](https://youtu.be/kR-J-TW4C8U)
 
